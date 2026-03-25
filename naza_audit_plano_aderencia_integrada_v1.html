@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NAZA Audit — Plano de Ação + Aderência Integrada</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    :root {
+      --bg:#e7ebf1; --panel:#ffffff; --panel-soft:#f5f7fb; --border:#dfe6ef; --text:#1e293b; --muted:#64748b;
+      --accent:#1e4a6e; --accent2:#3b82f6; --ok:#10b981; --warn:#f59e0b; --bad:#ef4444; --violet:#8b5cf6;
+      --shadow:0 10px 26px rgba(15,43,61,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    body::after{content:"NAZA Audit";position:fixed;left:50%;top:46%;transform:translate(-50%,-50%) rotate(-28deg);font-size:clamp(64px,14vw,150px);font-weight:800;color:#1e4a6e;opacity:.05;pointer-events:none;z-index:0;white-space:nowrap}
+    .app, header .inner{position:relative;z-index:1}
+    header{background:linear-gradient(105deg,#fff 0%,#f7fafc 100%);border-bottom:1px solid var(--border);box-shadow:0 4px 12px rgba(15,43,61,.05)}
+    header .inner{max-width:1600px;margin:0 auto;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand-mark{width:50px;height:50px;border-radius:14px;background:linear-gradient(135deg,#0f2b3d,#1e4a6e);display:grid;place-items:center;color:#fff;font-weight:800}
+    .brand-text strong{display:block;font-size:1.18rem;color:#0f2b3d}
+    .brand-text span{font-size:.83rem;color:var(--muted)}
+    .tagline{max-width:560px;text-align:right;color:var(--muted);font-size:.86rem}
+    .app{max-width:1600px;margin:0 auto;padding:16px 18px 28px}
+    .toolbar,.cloud-quick,.form-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    .toolbar{margin-bottom:12px}
+    input,select,textarea,button{font:inherit}
+    input[type="search"], .form-grid input, .form-grid select, .form-grid textarea {
+      border:1px solid var(--border); background:#f8fafc; color:var(--text); border-radius:10px; padding:10px 12px;
+    }
+    button,.filebtn{border:1px solid var(--border);background:#fff;color:var(--text);border-radius:10px;padding:10px 14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+    button.primary{background:var(--accent);border-color:#0f2b3d;color:#fff}
+    button.secondary{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+    button.danger{background:#fff1f2;color:#b91c1c;border-color:#fecdd3}
+    .filebtn input{display:none}
+    .layout{display:grid;grid-template-columns:minmax(340px,420px) 1fr;gap:14px;align-items:start}
+    @media (max-width:1100px){.layout{grid-template-columns:1fr}.tagline{text-align:left}}
+    .panel,.card,.consult-panel{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow)}
+    .panel,.consult-panel{padding:14px}
+    .consult-panel{margin-bottom:14px}
+    .consult-panel h3,.panel h2,.card h3{margin:0 0 10px}
+    .filters-grid{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:10px}
+    @media (max-width:1200px){.filters-grid{grid-template-columns:repeat(2,minmax(140px,1fr))}}
+    @media (max-width:760px){.filters-grid{grid-template-columns:1fr}}
+    .filters-grid label,.form-grid label{display:flex;flex-direction:column;gap:4px;font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+    .meta{font-size:.8rem;color:var(--muted)}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+    @media (max-width:560px){.form-grid{grid-template-columns:1fr}}
+    .full{grid-column:1 / -1}
+    textarea{min-height:72px;resize:vertical}
+    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+    .kpi{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow)}
+    .kpi span{display:block;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+    .kpi b{font-size:1.28rem;color:#0f2b3d}
+    .insights{padding:14px;border-left:4px solid var(--accent2);margin-bottom:12px}
+    .insights ul{margin:0;padding-left:18px;color:var(--muted)}
+    .charts{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px}
+    @media (max-width:980px){.charts{grid-template-columns:1fr}}
+    .card{padding:14px;overflow:hidden}
+    .card h3{font-size:.9rem;color:var(--muted);font-weight:700}
+    .chart-box{position:relative;height:300px}
+    .chart-box.tall{height:340px}
+    .gauges-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:700px){.gauges-grid{grid-template-columns:1fr}}
+    .gauge-shell{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px dashed var(--border);border-radius:16px;padding:8px;background:var(--panel-soft)}
+    .gauge-txt{margin-top:-6px;font-size:1.7rem;font-weight:800;color:#0f2b3d}
+    .gauge-sub{font-size:.8rem;color:var(--muted);margin-top:2px}
+    .gauge-box{height:220px;width:100%;max-width:260px}
+    .status-pill{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:.72rem;font-weight:700}
+    .s-Concluída{background:#dcfce7;color:#166534}
+    .s-Em-andamento{background:#dbeafe;color:#1d4ed8}
+    .s-Atrasada{background:#fee2e2;color:#b91c1c}
+    .s-Reprogramada{background:#ffedd5;color:#c2410c}
+    .s-Não-iniciada{background:#ede9fe;color:#6d28d9}
+    .scroll{max-height:470px;overflow:auto;border:1px solid var(--border);border-radius:12px;background:#fff}
+    table{width:100%;border-collapse:collapse;font-size:.81rem}
+    th,td{padding:8px 9px;border-bottom:1px solid var(--border);vertical-align:top}
+    th{position:sticky;top:0;background:#f8fafc;color:var(--muted);z-index:1}
+    .row-actions{white-space:nowrap}
+    .row-actions button{padding:5px 8px;font-size:.72rem}
+    .footer-help{margin-top:10px;font-size:.8rem;color:var(--muted)}
+    .cloud-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-weight:700}
+  </style>
+</head>
+<body>
+<header>
+  <div class="inner">
+    <div class="brand">
+      <div class="brand-mark">NAZA</div>
+      <div class="brand-text">
+        <strong>NAZA Audit</strong>
+        <span>Plano de Ação · Aderência Integrada · Gestão Visual</span>
+      </div>
+    </div>
+    <div class="tagline">Frente operacional para digitar as atividades diretamente no HTML, com todos os gráficos dos dois painéis e aderência calculada no padrão do arquivo de aderência.</div>
+  </div>
+</header>
+
+<div class="app">
+  <div class="toolbar">
+    <input type="search" id="q" placeholder="Busca rápida por tipo, estrutura, ação, local ou responsável" style="flex:1;min-width:220px" />
+    <button class="primary" id="btnNew">+ Nova atividade</button>
+    <button id="btnExport">Exportar JSON</button>
+    <label class="filebtn">Importar JSON<input type="file" id="importFile" accept=".json,application/json" /></label>
+    <button id="btnPdf">PDF executivo</button>
+    <button class="danger" id="btnReset">Limpar base local</button>
+  </div>
+
+  <div class="consult-panel">
+    <h3>Filtros de consulta e sincronização</h3>
+    <div class="filters-grid">
+      <label>Estrutura<select id="fEstrutura"><option value="">Todas</option></select></label>
+      <label>Tipo<select id="fTipo"><option value="">Todos</option></select></label>
+      <label>Responsável<select id="fResponsavel"><option value="">Todos</option></select></label>
+      <label>Status<select id="fStatus"><option value="">Todos</option></select></label>
+      <label>Término planejado até<input type="date" id="fDataLimite" /></label>
+    </div>
+    <div class="cloud-quick" style="margin-top:12px">
+      <span class="cloud-badge" id="sbStatus">Supabase pré-configurado</span>
+      <input type="email" id="sbEmail" placeholder="e-mail do Supabase Auth" />
+      <input type="password" id="sbPass" placeholder="senha" />
+      <button class="secondary" id="btnSbSignup">Criar acesso</button>
+      <button class="primary" id="btnSbLogin">Entrar</button>
+      <button id="btnSbPush">Enviar</button>
+      <button id="btnSbPull">Baixar</button>
+      <button id="btnSbLogout">Sair</button>
+    </div>
+    <div class="footer-help">No front eu deixei só login e sincronização. URL e chave pública ficaram internas no código. Senha de usuário nunca fica gravada no HTML.</div>
+  </div>
+
+  <div class="layout">
+    <section class="panel">
+      <h2 id="formTitle">Cadastro de atividade</h2>
+      <form id="f">
+        <div class="form-grid">
+          <label>Tipo<input name="tipo" required placeholder="ex.: INFRA" /></label>
+          <label>Estrutura<input name="estrutura" placeholder="ex.: CAVA GERMANO" /></label>
+          <label class="full">Local / praça<input name="local" placeholder="Onde?" /></label>
+          <label class="full">Ação (o quê?)<textarea name="acao" placeholder="Descreva a atividade"></textarea></label>
+          <label>Responsável<input name="responsavel" placeholder="Quem?" /></label>
+          <label>Status
+            <select name="status">
+              <option>Em andamento</option>
+              <option>Concluída</option>
+              <option>Atrasada</option>
+              <option>Reprogramada</option>
+              <option>Não iniciada</option>
+            </select>
+          </label>
+          <label>Início planejado<input name="iniPlan" type="date" /></label>
+          <label>Término planejado<input name="fimPlan" type="date" /></label>
+          <label>Início realizado<input name="iniReal" type="date" /></label>
+          <label>Término reprogramado<input name="fimReprog" type="date" /></label>
+          <label>Término realizado<input name="fimReal" type="date" /></label>
+          <label>Qtd. programada<input name="qProg" type="number" step="any" placeholder="opcional" /></label>
+          <label>Qtd. realizada<input name="qReal" type="number" step="any" placeholder="opcional" /></label>
+          <label>% concluído (0–100)<input name="pctConc" type="number" min="0" max="100" step="any" placeholder="ex.: 75" /></label>
+          <label>% planejado (0–100)<input name="pctPlan" type="number" min="0" max="100" step="any" placeholder="ex.: 100" /></label>
+          <label>Farol<input name="farol" placeholder="ex.: n / s" maxlength="5" /></label>
+          <label>Causa provável do atraso
+            <select name="causaAtraso">
+              <option value="">— Não aplicável —</option>
+              <option>Recursos humanos</option>
+              <option>Equipamento / meio físico</option>
+              <option>Logística ou fornecedor</option>
+              <option>Clima ou segurança</option>
+              <option>Projeto ou escopo</option>
+              <option>Aprovações ou licenças</option>
+              <option>Outro</option>
+            </select>
+          </label>
+          <label class="full">Observações<textarea name="obs" placeholder="Anotações adicionais"></textarea></label>
+        </div>
+        <div class="form-actions" style="margin-top:12px">
+          <button type="submit" class="primary" id="btnSave">Salvar atividade</button>
+          <button type="button" id="btnCancel">Cancelar edição</button>
+        </div>
+      </form>
+      <div class="footer-help">A base inicial já veio com atividades de teste para acender os gráficos. Depois você pode apagar tudo e usar só sua operação real.</div>
+    </section>
+
+    <section>
+      <div class="kpis" id="kpis"></div>
+
+      <div class="panel insights">
+        <h2>Situação atual — leitura executiva</h2>
+        <ul id="insightsList"></ul>
+        <div class="meta" id="dataMeta"></div>
+      </div>
+
+      <div class="charts">
+        <div class="card">
+          <h3>Velocímetros executivos</h3>
+          <div class="gauges-grid">
+            <div class="gauge-shell">
+              <div class="gauge-box"><canvas id="gaugeAderencia"></canvas></div>
+              <div class="gauge-txt" id="gaugeAderenciaTxt">0%</div>
+              <div class="gauge-sub">Aderência global</div>
+            </div>
+            <div class="gauge-shell">
+              <div class="gauge-box"><canvas id="gaugePontualidade"></canvas></div>
+              <div class="gauge-txt" id="gaugePontualidadeTxt">0%</div>
+              <div class="gauge-sub">Pontualidade</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Curva de aderência — planejado acumulado × realizado acumulado</h3>
+          <div class="chart-box"><canvas id="chartCurva"></canvas></div>
+        </div>
+
+        <div class="card">
+          <h3>Status consolidado (quantidades)</h3>
+          <div class="chart-box"><canvas id="chartStatus"></canvas></div>
+        </div>
+
+        <div class="card">
+          <h3>Distribuição de atividades por estrutura</h3>
+          <div class="chart-box"><canvas id="chartEstrutura"></canvas></div>
+        </div>
+
+        <div class="card">
+          <h3>Backlog crítico por tipo</h3>
+          <div class="chart-box"><canvas id="chartTipo"></canvas></div>
+        </div>
+
+        <div class="card">
+          <h3>Pareto de desvios por responsável</h3>
+          <div class="chart-box"><canvas id="chartParetoResponsavel"></canvas></div>
+        </div>
+
+        <div class="card">
+          <h3>Curva S — acumulado planejado × realizado (por término planejado)</h3>
+          <div class="chart-box"><canvas id="chartSCurve"></canvas></div>
+        </div>
+
+        <div class="card">
+          <h3>Aderência por estrutura</h3>
+          <div class="chart-box"><canvas id="chartStructAdherence"></canvas></div>
+        </div>
+
+        <div class="card">
+          <h3>Status — visão proporcional</h3>
+          <div class="chart-box"><canvas id="chartDonut"></canvas></div>
+        </div>
+
+        <div class="card">
+          <h3>Média % concluído × % planejado</h3>
+          <div class="chart-box"><canvas id="chartAvg"></canvas></div>
+        </div>
+
+        <div class="card">
+          <h3>Pareto — causas de atraso declaradas</h3>
+          <div class="chart-box"><canvas id="chartParetoCausa"></canvas></div>
+        </div>
+
+        <div class="card">
+          <h3>Linha do tempo do plano (estilo Project)</h3>
+          <div class="chart-box tall"><canvas id="chartGantt"></canvas></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <h2>Lista de atividades</h2>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Estrutura</th>
+                <th>Ação</th>
+                <th>Resp.</th>
+                <th>%C</th>
+                <th>%P</th>
+                <th>Status</th>
+                <th>Fim plan.</th>
+                <th>Fim real</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+  const LS_KEY = 'naza_plano_aderencia_integrada_v1';
+  const DEFAULT_DATA = [
+  {
+    "id": "seed-1",
+    "tipo": "INFRA",
+    "estrutura": "CAVA GERMANO",
+    "local": "Acesso da Serra das Araras",
+    "acao": "Correção de erosões no acesso Serra das Araras",
+    "responsavel": "Técnico de operação",
+    "status": "Concluída",
+    "iniPlan": "2026-03-05",
+    "fimPlan": "2026-03-08",
+    "iniReal": "2026-03-05",
+    "fimReprog": "2026-03-14",
+    "fimReal": "2026-03-15",
+    "qProg": 1,
+    "qReal": 1,
+    "pctConc": 100,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-2",
+    "tipo": "INFRA",
+    "estrutura": "CAVA GERMANO",
+    "local": "Direcionamento da drenagem",
+    "acao": "Direcionamento da drenagem e realizar revestimento com blocos ",
+    "responsavel": "Técnico de operação",
+    "status": "Em andamento",
+    "iniPlan": "2026-03-05",
+    "fimPlan": "2026-03-08",
+    "iniReal": "2026-03-05",
+    "fimReprog": "",
+    "fimReal": "",
+    "qProg": 1,
+    "qReal": 0.5,
+    "pctConc": 50.0,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-3",
+    "tipo": "INFRA",
+    "estrutura": "CAVA GERMANO",
+    "local": "Regularização e/ou impeza do piso",
+    "acao": "Regularização e/ou limpeza do piso para disposição.",
+    "responsavel": "Técnico de operação",
+    "status": "Concluída",
+    "iniPlan": "2026-03-05",
+    "fimPlan": "2026-03-08",
+    "iniReal": "2026-03-16",
+    "fimReprog": "",
+    "fimReal": "2026-03-18",
+    "qProg": 1,
+    "qReal": 1,
+    "pctConc": 100,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-4",
+    "tipo": "INFRA",
+    "estrutura": "CAVA GERMANO",
+    "local": "Retirada de interferências",
+    "acao": "Retirada das interferências da equipe de projetos",
+    "responsavel": "Técnico de operação",
+    "status": "Em andamento",
+    "iniPlan": "2026-03-05",
+    "fimPlan": "2026-03-08",
+    "iniReal": "2026-03-16",
+    "fimReprog": "",
+    "fimReal": "",
+    "qProg": 1,
+    "qReal": 0.9,
+    "pctConc": 90.0,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-5",
+    "tipo": "INFRA",
+    "estrutura": "CAVA GERMANO",
+    "local": "Sump",
+    "acao": "Realizar construção de Sump no pé da serra das arraras ",
+    "responsavel": "Técnico de operação",
+    "status": "Atrasada",
+    "iniPlan": "2026-03-16",
+    "fimPlan": "2026-03-23",
+    "iniReal": "",
+    "fimReprog": "",
+    "fimReal": "",
+    "qProg": 1,
+    "qReal": "",
+    "pctConc": 0,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-6",
+    "tipo": "INFRA",
+    "estrutura": "CAVA GERMANO",
+    "local": "Sump",
+    "acao": "Realizar adequação de Sump na parte superior do acesso da serra das arraras",
+    "responsavel": "Técnico de operação",
+    "status": "Atrasada",
+    "iniPlan": "2026-03-16",
+    "fimPlan": "2026-03-23",
+    "iniReal": "",
+    "fimReprog": "",
+    "fimReal": "",
+    "qProg": 1,
+    "qReal": "",
+    "pctConc": 0,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-7",
+    "tipo": "INFRA",
+    "estrutura": "CAVA GERMANO",
+    "local": "Dessasoreamento do canal",
+    "acao": "Desassoreamento do canal de drenagem",
+    "responsavel": "Técnico de operação",
+    "status": "Em andamento",
+    "iniPlan": "2026-03-05",
+    "fimPlan": "2026-03-08",
+    "iniReal": "2026-03-16",
+    "fimReprog": "",
+    "fimReal": "",
+    "qProg": 1,
+    "qReal": 0.5,
+    "pctConc": 50.0,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-8",
+    "tipo": "INSTRUMENTAÇÃO",
+    "estrutura": "CAVA GERMANO",
+    "local": "PA035",
+    "acao": "Realizar alteamento de instrumento e verificar se há possibilidade de outros alteamentos",
+    "responsavel": "Eduardo Dutra",
+    "status": "Concluída",
+    "iniPlan": "2026-03-04",
+    "fimPlan": "2026-03-09",
+    "iniReal": "2026-03-04",
+    "fimReprog": "",
+    "fimReal": "2026-03-06",
+    "qProg": 1,
+    "qReal": 1,
+    "pctConc": 100,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-9",
+    "tipo": "ANOMALIAS",
+    "estrutura": "PDER SUL",
+    "local": "PDE de estéril do DP02",
+    "acao": "Ajuste da drenagem da PDE de estéril do DP02",
+    "responsavel": "Técnico de operação",
+    "status": "Concluída",
+    "iniPlan": "2026-01-23",
+    "fimPlan": "2026-01-30",
+    "iniReal": "2026-01-24",
+    "fimReprog": "",
+    "fimReal": "2026-02-24",
+    "qProg": 1,
+    "qReal": 1,
+    "pctConc": 100,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-10",
+    "tipo": "ANOMALIAS",
+    "estrutura": "PDER SUL",
+    "local": "Cinturão",
+    "acao": "Correção de erosões na face dos taludes de todo o cinturão",
+    "responsavel": "Técnico de operação",
+    "status": "Concluída",
+    "iniPlan": "2026-01-20",
+    "fimPlan": "2026-01-09",
+    "iniReal": "2026-01-27",
+    "fimReprog": "",
+    "fimReal": "2026-02-22",
+    "qProg": 1,
+    "qReal": 1,
+    "pctConc": 100,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-11",
+    "tipo": "ANOMALIAS",
+    "estrutura": "PDER SUL",
+    "local": "PDE estéril",
+    "acao": "Correção de erosões acima do canteiro do CRD",
+    "responsavel": "Técnico de operação",
+    "status": "Concluída",
+    "iniPlan": "2026-02-09",
+    "fimPlan": "2026-02-15",
+    "iniReal": "2026-03-04",
+    "fimReprog": "",
+    "fimReal": "2026-03-08",
+    "qProg": 1,
+    "qReal": 1,
+    "pctConc": 100,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-12",
+    "tipo": "INFRA",
+    "estrutura": "PDER SUL",
+    "local": "Caixa de dissipação DA03",
+    "acao": "Realizar o dessasoriamento da caixa de dissipação da DA03",
+    "responsavel": "Técnico de operação",
+    "status": "Concluída",
+    "iniPlan": "2026-03-09",
+    "fimPlan": "2026-03-13",
+    "iniReal": "2026-03-10",
+    "fimReprog": "",
+    "fimReal": "2026-03-12",
+    "qProg": 1,
+    "qReal": 1,
+    "pctConc": 100,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-13",
+    "tipo": "ANOMALIAS",
+    "estrutura": "PDER SUL",
+    "local": "1226-1315 9",
+    "acao": "Analisar possibilidade de recuperação de instrumento",
+    "responsavel": "Eduardo Dutra",
+    "status": "Concluída",
+    "iniPlan": "2026-01-16",
+    "fimPlan": "2026-01-19",
+    "iniReal": "2026-01-16",
+    "fimReprog": "",
+    "fimReal": "2026-01-16",
+    "qProg": 1,
+    "qReal": 1,
+    "pctConc": 100,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-14",
+    "tipo": "INFRA",
+    "estrutura": "PDER SUL",
+    "local": "CP02",
+    "acao": "Limpeza do CP02, trecho retilineo na elevação da cota 1040",
+    "responsavel": "Técnico de operação",
+    "status": "Concluída",
+    "iniPlan": "2026-01-23",
+    "fimPlan": "2026-01-30",
+    "iniReal": "2026-01-30",
+    "fimReprog": "",
+    "fimReal": "2026-02-02",
+    "qProg": 1,
+    "qReal": 1,
+    "pctConc": 100,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-15",
+    "tipo": "ANOMALIAS",
+    "estrutura": "PDER SUL",
+    "local": "Correção de erosões no cinturão",
+    "acao": "Realizar correção da erosão no cinturão (para evitar maiores impactos no instrumento 21PI340, na berma abaixo) ",
+    "responsavel": "Técnico de operação",
+    "status": "Concluída",
+    "iniPlan": "2026-03-13",
+    "fimPlan": "2026-03-18",
+    "iniReal": "2026-03-16",
+    "fimReprog": "",
+    "fimReal": "2026-03-16",
+    "qProg": 1,
+    "qReal": 1,
+    "pctConc": 100,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-16",
+    "tipo": "INFRA",
+    "estrutura": "PDER SUL",
+    "local": "Bancos 1040 ",
+    "acao": "Proteção vegetal taludes do banco 1040 encontro da pilha 1010",
+    "responsavel": "GGO",
+    "status": "Concluída",
+    "iniPlan": "2026-02-10",
+    "fimPlan": "2026-03-10",
+    "iniReal": "2026-01-10",
+    "fimReprog": "",
+    "fimReal": "2026-02-03",
+    "qProg": 1,
+    "qReal": 1,
+    "pctConc": 100,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-17",
+    "tipo": "INFRA",
+    "estrutura": "PDER SUL",
+    "local": "PDE de estéril do DP02",
+    "acao": "Realizar conferência topográfica dos bancos 1080 e 1090 do DP02",
+    "responsavel": "Topógrafos",
+    "status": "Concluída",
+    "iniPlan": "2026-02-05",
+    "fimPlan": "2026-02-06",
+    "iniReal": "",
+    "fimReprog": "",
+    "fimReal": "2026-02-06",
+    "qProg": 1,
+    "qReal": 1,
+    "pctConc": 100,
+    "pctPlan": 100,
+    "farol": "",
+    "causaAtraso": "",
+    "obs": ""
+  },
+  {
+    "id": "seed-18",
+    "tipo": "INSTRUMENTAÇÃO",
+    "estrutura": "CAVA GERMANO",
+    "local": "Cava de Germano",
+    "acao": "Verificar os instrumentos que será necessário alteamento ",
+    "responsavel": "Sandro/Esmael",
+    "status": "Concluída",
+    "iniPlan": "2026-03-17",
+    "fimPlan": "2026-03-20",
+    "iniReal": "2026-03-24",
+    "fimReprog": "",
+    "fimReal": "2026-03-24",
+    "qProg": 1,
+    "qReal": 1,
+    "pctConc": 100,
+    "pctPlan": 100,
+    "farol": "n",
+    "causaAtraso": "",
+    "obs": ""
+  }
+];
+  const DEFAULT_SUPABASE_URL = "https://duprxuhfltacvfgbjomj.supabase.co";
+  const DEFAULT_SUPABASE_ANON = "sb_publishable_DqT558KsMzTUtVVUZAHpqg_hbMolEeU";
+  const TABLE_NAME = 'naza_planos';
+  let sbClient = null;
+  let charts = {};
+  let activities = [];
+  let editingId = null;
+
+  if (typeof Chart !== 'undefined') {
+    Chart.defaults.font.family = 'Inter, Segoe UI, Arial, sans-serif';
+    Chart.defaults.color = '#64748b';
+    Chart.defaults.borderColor = '#e2e8f0';
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const uid = () => (globalThis.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  const toNum = (v) => (v === '' || v == null || Number.isNaN(Number(v))) ? null : Number(v);
+  const pctText = (v) => isFinite(v) ? (Math.round(v * 1000) / 10).toFixed(1).replace('.', ',') + '%' : '0,0%';
+  const mean = (arr) => { const a = arr.filter(v => typeof v === 'number' && !Number.isNaN(v)); return a.length ? a.reduce((s,v)=>s+v,0)/a.length : 0; };
+  const uniq = (arr) => [...new Set(arr.filter(Boolean).map(v => String(v).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const norm = (s) => String(s ?? '').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().trim();
+  const parseDate = (v) => {
+    if (!v) return null;
+    if (v instanceof Date && !isNaN(v)) return new Date(v.getFullYear(), v.getMonth(), v.getDate(), 12);
+    const s = String(v).trim();
+    if (!s) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d,12); }
+    const d = new Date(s);
+    return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12);
+  };
+  const formatDate = (v) => { const d = parseDate(v); return d ? d.toLocaleDateString('pt-BR') : '—'; };
+  const daysBetween = (a,b) => Math.round((b-a)/(24*3600*1000));
+
+  function loadActivities() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      const arr = raw ? JSON.parse(raw) : null;
+      activities = Array.isArray(arr) && arr.length ? arr : DEFAULT_DATA.slice();
+    } catch {
+      activities = DEFAULT_DATA.slice();
+    }
+  }
+
+  function saveActivities() { localStorage.setItem(LS_KEY, JSON.stringify(activities)); }
+
+  function calcPlannedProgress(a) {
+    const explicit = toNum(a.pctPlan);
+    if (explicit != null) return Math.max(0, Math.min(1, explicit / 100));
+    const ini = parseDate(a.iniPlan);
+    const fim = parseDate(a.fimReprog || a.fimPlan);
+    const today = new Date(); today.setHours(12,0,0,0);
+    if (!ini && !fim) return 0;
+    if (!ini && fim) return today >= fim ? 1 : 0;
+    if (ini && !fim) return today >= ini ? 1 : 0;
+    if (today <= ini) return 0;
+    if (today >= fim) return 1;
+    const total = Math.max(1, daysBetween(ini, fim));
+    const done = Math.max(0, daysBetween(ini, today));
+    return Math.max(0, Math.min(1, done / total));
+  }
+
+  function classifyLate(a) {
+    if (String(a.status || '').trim() === 'Atrasada') return true;
+    if (String(a.status || '').trim() === 'Concluída') return false;
+    const lim = parseDate(a.fimReprog || a.fimPlan);
+    const today = new Date(); today.setHours(12,0,0,0);
+    const conc = toNum(a.pctConc);
+    return !!(lim && today > lim && (conc == null || conc < 100));
+  }
+
+  function getFilteredActivities() {
+    const busca = norm($('q').value);
+    const estrutura = $('fEstrutura').value;
+    const tipo = $('fTipo').value;
+    const resp = $('fResponsavel').value;
+    const status = $('fStatus').value;
+    const dataLimite = parseDate($('fDataLimite').value);
+    return activities.filter(a => {
+      const okBusca = !busca || norm([a.tipo,a.estrutura,a.local,a.acao,a.responsavel,a.status,a.obs].join(' ')).includes(busca);
+      const okEstr = !estrutura || a.estrutura === estrutura;
+      const okTipo = !tipo || a.tipo === tipo;
+      const okResp = !resp || a.responsavel === resp;
+      const okStatus = !status || a.status === status;
+      const fimPlan = parseDate(a.fimReprog || a.fimPlan);
+      const okData = !dataLimite || !fimPlan || fimPlan <= dataLimite;
+      return okBusca && okEstr && okTipo && okResp && okStatus && okData;
+    });
+  }
+
+  function populateFilters() {
+    const setOpts = (id, vals, label) => {
+      const sel = $(id);
+      const current = sel.value;
+      sel.innerHTML = `<option value="">${label}</option>` + vals.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+      if ([...sel.options].some(o => o.value === current)) sel.value = current;
+    };
+    setOpts('fEstrutura', uniq(activities.map(a => a.estrutura)), 'Todas');
+    setOpts('fTipo', uniq(activities.map(a => a.tipo)), 'Todos');
+    setOpts('fResponsavel', uniq(activities.map(a => a.responsavel)), 'Todos');
+    setOpts('fStatus', uniq(activities.map(a => a.status)), 'Todos');
+  }
+
+  function computeMetrics(data) {
+    const total = data.length;
+    const avgPlan = mean(data.map(a => calcPlannedProgress(a)));
+    const avgReal = mean(data.map(a => {
+      const v = toNum(a.pctConc);
+      return v == null ? 0 : Math.max(0, Math.min(1, v/100));
+    }));
+    const adherence = avgPlan > 0 ? Math.min(1.5, avgReal / avgPlan) : 0;
+    const done = data.filter(a => a.status === 'Concluída');
+    const onTime = done.length ? done.filter(a => {
+      const fr = parseDate(a.fimReal);
+      const lp = parseDate(a.fimReprog || a.fimPlan || a.fimReal);
+      return fr && lp && fr <= lp;
+    }).length / done.length : 0;
+    return {
+      total,
+      avgPlan,
+      avgReal,
+      adherence,
+      onTime,
+      delayed: data.filter(a => classifyLate(a)).length,
+      reprogramadas: data.filter(a => a.status === 'Reprogramada').length,
+      andamento: data.filter(a => a.status === 'Em andamento').length,
+      naoIniciadas: data.filter(a => a.status === 'Não iniciada').length,
+      concluidas: done.length
+    };
+  }
+
+  function groupCount(data, keyFn) {
+    const m = new Map();
+    data.forEach(a => {
+      const k = keyFn(a) || 'Não informado';
+      m.set(k, (m.get(k) || 0) + 1);
+    });
+    return m;
+  }
+
+  function topEntries(map, limit=10) { return [...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0, limit); }
+
+  function buildTimelineSeries(data) {
+    const points = new Map();
+    data.forEach(a => {
+      const pDate = parseDate(a.fimReprog || a.fimPlan);
+      if (pDate) {
+        const k = pDate.toISOString().slice(0,10);
+        if (!points.has(k)) points.set(k, { plan:0, real:0 });
+        points.get(k).plan += toNum(a.qProg) ?? 1;
+      }
+      const rDate = parseDate(a.fimReal);
+      if (rDate) {
+        const k = rDate.toISOString().slice(0,10);
+        if (!points.has(k)) points.set(k, { plan:0, real:0 });
+        points.get(k).real += toNum(a.qReal) ?? toNum(a.qProg) ?? 1;
+      }
+    });
+    const labels = [...points.keys()].sort();
+    let ap = 0, ar = 0;
+    return {
+      labels: labels.map(d => parseDate(d).toLocaleDateString('pt-BR')),
+      planned: labels.map(k => ap += points.get(k).plan),
+      realized: labels.map(k => ar += points.get(k).real)
+    };
+  }
+
+  function buildSCurve(data) {
+    const rows = data.filter(a => parseDate(a.fimPlan)).sort((a,b)=>parseDate(a.fimPlan)-parseDate(b.fimPlan));
+    const weights = rows.map(a => {
+      const pp = toNum(a.pctPlan);
+      return pp != null && pp > 0 ? pp/100 : 1;
+    });
+    const totalW = weights.reduce((s,v)=>s+v,0) || 1;
+    let accW = 0, accR = 0;
+    const labels = [], planned = [], realized = [];
+    rows.forEach((a, i) => {
+      const real = toNum(a.pctConc);
+      accW += weights[i];
+      accR += (real != null ? real/100 : 0) * weights[i];
+      planned.push((accW / totalW) * 100);
+      realized.push((accR / totalW) * 100);
+      labels.push(parseDate(a.fimPlan).toLocaleDateString('pt-BR', {day:'2-digit', month:'short'}));
+    });
+    return { labels, planned, realized };
+  }
+
+  function buildGantt(data) {
+    const rows = data.filter(a => parseDate(a.iniPlan) || parseDate(a.fimPlan)).sort((a,b)=> {
+      const da = parseDate(a.iniPlan) || parseDate(a.fimPlan) || new Date();
+      const db = parseDate(b.iniPlan) || parseDate(b.fimPlan) || new Date();
+      return da - db;
+    }).slice(0, 16);
+    const base = rows.reduce((min, a) => {
+      const d = parseDate(a.iniPlan) || parseDate(a.fimPlan);
+      return (!min || (d && d < min)) ? d : min;
+    }, null) || new Date();
+    return {
+      labels: rows.map(a => (a.acao || a.local || a.tipo).slice(0, 36)),
+      data: rows.map(a => {
+        const ini = parseDate(a.iniPlan) || parseDate(a.fimPlan) || base;
+        const fim = parseDate(a.fimReprog || a.fimPlan || a.fimReal) || ini;
+        return [Math.max(0, daysBetween(base, ini)), Math.max(1, daysBetween(ini, fim) || 1)];
+      })
+    };
+  }
+
+  function destroyCharts() { Object.values(charts).forEach(c => c && c.destroy && c.destroy()); charts = {}; }
+
+  function basePlugins() {
+    return {
+      legend: { labels: { color:'#64748b', usePointStyle:true, boxWidth:10 } },
+      tooltip: { backgroundColor:'rgba(15,23,42,.96)', borderColor:'rgba(255,255,255,.1)', borderWidth:1, titleColor:'#fff', bodyColor:'#e2e8f0' }
+    };
+  }
+
+  function axisStyle() { return { ticks: { color:'#64748b' }, grid: { color:'#edf2f7' } }; }
+
+  function makeGauge(canvasId, value) {
+    const v = Math.max(0, Math.min(1, value));
+    return new Chart($(canvasId), {
+      type:'doughnut',
+      data: { datasets:[{ data:[v, 1-v], backgroundColor:['#1e4a6e', '#d8e1eb'], borderWidth:0, cutout:'74%' }] },
+      options: { rotation:-90, circumference:180, responsive:true, maintainAspectRatio:false, plugins: { legend: { display:false }, tooltip: { enabled:false } } }
+    });
+  }
+
+  function renderKpis(metrics) {
+    $('kpis').innerHTML = [
+      ['Aderência global', pctText(metrics.adherence)],
+      ['Planejado médio', pctText(metrics.avgPlan)],
+      ['Realizado médio', pctText(metrics.avgReal)],
+      ['Pontualidade', pctText(metrics.onTime)],
+      ['Atividades', metrics.total],
+      ['Atrasadas', metrics.delayed],
+      ['Reprogramadas', metrics.reprogramadas],
+      ['Concluídas', metrics.concluidas]
+    ].map(([k,v]) => `<div class="kpi"><span>${k}</span><b>${v}</b></div>`).join('');
+  }
+
+  function renderInsights(data, metrics) {
+    const insights = [];
+    if (!data.length) insights.push('Nenhuma atividade na carteira filtrada.');
+    else {
+      if (metrics.adherence < 0.8) insights.push(`A aderência está em ${pctText(metrics.adherence)}, abaixo do nível de conforto. Prioridade: atacar atrasos e reprogramações.`);
+      else if (metrics.adherence < 0.95) insights.push(`A aderência está em ${pctText(metrics.adherence)}. O plano está perto do controle, mas ainda cabe recuperação.`);
+      else insights.push(`A aderência está forte em ${pctText(metrics.adherence)}. O foco passa a ser sustentar a pontualidade.`);
+      if (metrics.delayed > 0) insights.push(`Existem ${metrics.delayed} atividades atrasadas ou vencidas pela regra de prazo.`);
+      if (metrics.reprogramadas > 0) insights.push(`${metrics.reprogramadas} atividades reprogramadas exigem causa-raiz e correção de carteira.`);
+      const critResp = topEntries(groupCount(data.filter(a => ['Atrasada','Reprogramada'].includes(a.status) || classifyLate(a)), a => a.responsavel), 1)[0];
+      if (critResp) insights.push(`Maior concentração de desvio: ${critResp[0]} com ${critResp[1]} ocorrências críticas.`);
+      const critEstr = topEntries(groupCount(data.filter(a => ['Atrasada','Reprogramada','Em andamento'].includes(a.status) || classifyLate(a)), a => a.estrutura), 1)[0];
+      if (critEstr) insights.push(`Estrutura mais pressionada: ${critEstr[0]}.`);
+      if (metrics.onTime < 0.75) insights.push(`A pontualidade está em ${pctText(metrics.onTime)}. Prazo acordado ainda não está sustentado.`);
+      else insights.push(`A pontualidade está em ${pctText(metrics.onTime)}.`);
+    }
+    $('insightsList').innerHTML = insights.slice(0,6).map(i => `<li>${esc(i)}</li>`).join('');
+    $('dataMeta').textContent = `${data.length} atividades na carteira filtrada · ${activities.length} atividades salvas no navegador`;
+  }
+
+  function renderTable(data) {
+    const order = {'Atrasada':1,'Reprogramada':2,'Em andamento':3,'Não iniciada':4,'Concluída':5};
+    $('tbody').innerHTML = data.slice().sort((a,b) => (order[a.status] || 99) - (order[b.status] || 99)).map(a => {
+      const cls = 's-' + (a.status || 'Não iniciada').replace(/\s+/g, '-');
+      return `<tr>
+        <td>${esc(a.tipo)}</td>
+        <td>${esc(a.estrutura)}</td>
+        <td>${esc(a.acao)}</td>
+        <td>${esc(a.responsavel)}</td>
+        <td>${toNum(a.pctConc) == null ? '—' : esc(String(a.pctConc)) + '%'}</td>
+        <td>${toNum(a.pctPlan) == null ? 'auto' : esc(String(a.pctPlan)) + '%'}</td>
+        <td><span class="status-pill ${cls}">${esc(a.status || 'Não iniciada')}</span></td>
+        <td>${formatDate(a.fimReprog || a.fimPlan)}</td>
+        <td>${formatDate(a.fimReal)}</td>
+        <td class="row-actions">
+          <button data-edit="${a.id}">Editar</button>
+          <button data-del="${a.id}" class="danger">Excluir</button>
+        </td>
+      </tr>`;
+    }).join('');
+    $('tbody').querySelectorAll('[data-edit]').forEach(btn => btn.onclick = () => editActivity(btn.dataset.edit));
+    $('tbody').querySelectorAll('[data-del]').forEach(btn => btn.onclick = () => deleteActivity(btn.dataset.del));
+  }
+
+  function renderCharts(data, metrics) {
+    destroyCharts();
+    $('gaugeAderenciaTxt').textContent = pctText(metrics.adherence);
+    $('gaugePontualidadeTxt').textContent = pctText(metrics.onTime);
+    charts.gaugeA = makeGauge('gaugeAderencia', metrics.adherence);
+    charts.gaugeP = makeGauge('gaugePontualidade', metrics.onTime);
+
+    const timeline = buildTimelineSeries(data);
+    charts.curva = new Chart($('chartCurva'), {
+      type:'line',
+      data: { labels: timeline.labels, datasets:[
+        { label:'Planejado acumulado', data: timeline.planned, borderColor:'#1e4a6e', backgroundColor:'rgba(30,74,110,.12)', tension:.25, borderWidth:3 },
+        { label:'Realizado acumulado', data: timeline.realized, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,.12)', tension:.25, borderWidth:3 }
+      ]},
+      options: { responsive:true, maintainAspectRatio:false, plugins:basePlugins(), scales: { x:axisStyle(), y:axisStyle() } }
+    });
+
+    const statusMap = groupCount(data, a => a.status || 'Não iniciada');
+    const stLabels = ['Concluída','Em andamento','Atrasada','Reprogramada','Não iniciada'].filter(k => statusMap.get(k) != null);
+    const stColors = ['#10b981','#3b82f6','#ef4444','#f59e0b','#8b5cf6'];
+    charts.status = new Chart($('chartStatus'), {
+      type:'bar',
+      data: { labels: stLabels, datasets:[{ label:'Quantidade', data: stLabels.map(k => statusMap.get(k) || 0), backgroundColor:stColors, borderRadius:10 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:basePlugins().tooltip }, scales: { x:axisStyle(), y:axisStyle() } }
+    });
+
+    const estr = topEntries(groupCount(data, a => a.estrutura), 10);
+    charts.estrutura = new Chart($('chartEstrutura'), {
+      type:'bar',
+      data: { labels: estr.map(x => x[0]), datasets:[{ label:'Atividades', data: estr.map(x => x[1]), backgroundColor:'#1e4a6e', borderRadius:10 }] },
+      options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:basePlugins().tooltip }, scales: { x:axisStyle(), y:{ ...axisStyle(), grid:{display:false} } } }
+    });
+
+    const tipo = topEntries(groupCount(data.filter(a => ['Atrasada','Reprogramada','Em andamento'].includes(a.status) || classifyLate(a)), a => a.tipo), 10);
+    charts.tipo = new Chart($('chartTipo'), {
+      type:'bar',
+      data: { labels: tipo.map(x => x[0]), datasets:[{ label:'Backlog crítico', data: tipo.map(x => x[1]), backgroundColor:'#ef4444', borderRadius:10 }] },
+      options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:basePlugins().tooltip }, scales: { x:axisStyle(), y:{ ...axisStyle(), grid:{display:false} } } }
+    });
+
+    const paretoResp = topEntries(groupCount(data.filter(a => ['Atrasada','Reprogramada'].includes(a.status) || classifyLate(a)), a => a.responsavel), 8);
+    let acc = 0;
+    const totalPareto = paretoResp.reduce((s, x) => s + x[1], 0) || 1;
+    const cumResp = paretoResp.map(x => (acc += x[1], +(acc / totalPareto * 100).toFixed(1)));
+    charts.paretoResp = new Chart($('chartParetoResponsavel'), {
+      data: {
+        labels: paretoResp.map(x => x[0]),
+        datasets: [
+          { type:'bar', label:'Desvios', data: paretoResp.map(x => x[1]), backgroundColor:'#f59e0b', borderRadius:10 },
+          { type:'line', label:'Acumulado %', data:cumResp, yAxisID:'y1', borderColor:'#1e4a6e', tension:.25, borderWidth:3 }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false, plugins:basePlugins(),
+        scales: { x:axisStyle(), y:axisStyle(), y1:{ position:'right', min:0, max:100, ticks:{ color:'#64748b', callback:(v)=>v+'%' }, grid:{display:false} } }
+      }
+    });
+
+    const sCurve = buildSCurve(data);
+    charts.scurve = new Chart($('chartSCurve'), {
+      type:'line',
+      data: { labels: sCurve.labels, datasets:[
+        { label:'Planejado %', data:sCurve.planned, borderColor:'#94a3b8', backgroundColor:'rgba(148,163,184,.18)', tension:.25, borderWidth:3 },
+        { label:'Realizado %', data:sCurve.realized, borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,.14)', tension:.25, borderWidth:3 }
+      ]},
+      options: { responsive:true, maintainAspectRatio:false, plugins:basePlugins(), scales: { x:axisStyle(), y:{ ...axisStyle(), min:0, max:100 } } }
+    });
+
+    const structAdhBase = new Map();
+    data.forEach(a => {
+      const k = a.estrutura || 'Não informado';
+      if (!structAdhBase.has(k)) structAdhBase.set(k, { real:0, plan:0 });
+      structAdhBase.get(k).real += (toNum(a.pctConc) || 0)/100;
+      structAdhBase.get(k).plan += calcPlannedProgress(a);
+    });
+    const structLabels = [...structAdhBase.keys()].slice(0, 12);
+    const structVals = structLabels.map(k => {
+      const o = structAdhBase.get(k);
+      return o.plan > 0 ? Math.min(150, o.real / o.plan * 100) : 0;
+    });
+    charts.structAdh = new Chart($('chartStructAdherence'), {
+      type:'bar',
+      data: { labels: structLabels, datasets:[{ label:'Aderência %', data:structVals, backgroundColor:'#1e4a6e', borderRadius:10 }] },
+      options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:basePlugins().tooltip }, scales: { x:{ ...axisStyle(), min:0, max:150 }, y:{ ...axisStyle(), grid:{display:false} } } }
+    });
+
+    charts.donut = new Chart($('chartDonut'), {
+      type:'doughnut',
+      data: { labels: stLabels, datasets:[{ data:stLabels.map(k => statusMap.get(k) || 0), backgroundColor:stColors, borderColor:'#fff', borderWidth:2 }] },
+      options: { responsive:true, maintainAspectRatio:false, cutout:'58%', plugins:{ tooltip:basePlugins().tooltip, legend:{position:'bottom', labels:{ color:'#64748b' }} } }
+    });
+
+    const avgConc = mean(data.map(a => { const v = toNum(a.pctConc); return v == null ? null : v/100; })) * 100;
+    const avgPlan = mean(data.map(a => calcPlannedProgress(a))) * 100;
+    charts.avg = new Chart($('chartAvg'), {
+      type:'bar',
+      data: { labels:['Média % concluído', 'Média % planejado'], datasets:[{ data:[avgConc, avgPlan], backgroundColor:['#3b82f6','#cbd5e1'], borderRadius:10 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:basePlugins().tooltip }, scales: { x:axisStyle(), y:{ ...axisStyle(), min:0, max:100 } } }
+    });
+
+    const causeMap = groupCount(data.filter(a => ['Atrasada','Reprogramada'].includes(a.status) || classifyLate(a)).filter(a => a.causaAtraso), a => a.causaAtraso);
+    const causeEntries = topEntries(causeMap, 8);
+    let accC = 0;
+    const causeTotal = causeEntries.reduce((s, x) => s + x[1], 0) || 1;
+    const causeCum = causeEntries.map(x => (accC += x[1], +(accC / causeTotal * 100).toFixed(1)));
+    charts.paretoCause = new Chart($('chartParetoCausa'), {
+      data: {
+        labels: causeEntries.map(x => x[0]),
+        datasets: [
+          { type:'bar', label:'Ocorrências', data:causeEntries.map(x => x[1]), backgroundColor:'#8b5cf6', borderRadius:10 },
+          { type:'line', label:'Acumulado %', data:causeCum, yAxisID:'y1', borderColor:'#1e4a6e', tension:.25, borderWidth:3 }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false, plugins:basePlugins(),
+        scales: { x:axisStyle(), y:axisStyle(), y1:{ position:'right', min:0, max:100, ticks:{ color:'#64748b', callback:(v)=>v+'%' }, grid:{display:false} } }
+      }
+    });
+
+    const gantt = buildGantt(data);
+    charts.gantt = new Chart($('chartGantt'), {
+      type:'bar',
+      data: {
+        labels:gantt.labels,
+        datasets:[
+          { label:'Início', data:gantt.data.map(v => v[0]), backgroundColor:'rgba(0,0,0,0)' },
+          { label:'Duração', data:gantt.data.map(v => v[1]), backgroundColor:'#3b82f6', borderRadius:8 }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false, indexAxis:'y',
+        plugins:{ tooltip:basePlugins().tooltip, legend:{display:false} },
+        scales: {
+          x:{ ...axisStyle(), stacked:true, title:{ display:true, text:'Dias a partir do primeiro marco' } },
+          y:{ ...axisStyle(), stacked:true, grid:{display:false} }
+        }
+      }
+    });
+  }
+
+  function render() {
+    populateFilters();
+    const filtered = getFilteredActivities();
+    const metrics = computeMetrics(filtered);
+    renderKpis(metrics);
+    renderInsights(filtered, metrics);
+    renderTable(filtered);
+    renderCharts(filtered, metrics);
+  }
+
+  function fillForm(a) {
+    const f = $('f');
+    Object.entries(a).forEach(([k,v]) => { if (f.elements[k]) f.elements[k].value = v == null ? '' : v; });
+    $('formTitle').textContent = 'Editando atividade';
+  }
+
+  function clearForm() {
+    $('f').reset();
+    editingId = null;
+    $('formTitle').textContent = 'Cadastro de atividade';
+  }
+
+  function editActivity(id) {
+    const a = activities.find(x => x.id === id);
+    if (!a) return;
+    editingId = id;
+    fillForm(a);
+    window.scrollTo({ top: 0, behavior:'smooth' });
+  }
+
+  function deleteActivity(id) {
+    if (!confirm('Excluir esta atividade?')) return;
+    activities = activities.filter(a => a.id !== id);
+    saveActivities();
+    render();
+  }
+
+  function collectForm() {
+    const f = $('f');
+    return {
+      id: editingId || uid(),
+      tipo: f.tipo.value.trim(),
+      estrutura: f.estrutura.value.trim(),
+      local: f.local.value.trim(),
+      acao: f.acao.value.trim(),
+      responsavel: f.responsavel.value.trim(),
+      status: f.status.value,
+      iniPlan: f.iniPlan.value,
+      fimPlan: f.fimPlan.value,
+      iniReal: f.iniReal.value,
+      fimReprog: f.fimReprog.value,
+      fimReal: f.fimReal.value,
+      qProg: f.qProg.value,
+      qReal: f.qReal.value,
+      pctConc: f.pctConc.value,
+      pctPlan: f.pctPlan.value,
+      farol: f.farol.value.trim(),
+      causaAtraso: f.causaAtraso.value,
+      obs: f.obs.value.trim()
+    };
+  }
+
+  function exportJson() {
+    const blob = new Blob([JSON.stringify(activities, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'naza_plano_aderencia_integrada.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function importJson(file) {
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const arr = JSON.parse(r.result);
+        if (!Array.isArray(arr)) throw new Error('Arquivo inválido');
+        activities = arr;
+        saveActivities();
+        clearForm();
+        render();
+      } catch (e) {
+        alert('Não foi possível importar o JSON.');
+      }
+    };
+    r.readAsText(file, 'utf-8');
+  }
+
+  async function exportPdf() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+    const data = getFilteredActivities();
+    const metrics = computeMetrics(data);
+    doc.setFontSize(16);
+    doc.text('NAZA Audit — Plano de Ação + Aderência Integrada', 14, 14);
+    doc.setFontSize(10);
+    doc.text(`Aderência: ${pctText(metrics.adherence)} | Pontualidade: ${pctText(metrics.onTime)} | Atividades: ${metrics.total} | Atrasadas: ${metrics.delayed}`, 14, 21);
+    doc.autoTable({
+      startY: 28,
+      head: [['Tipo','Estrutura','Ação','Responsável','Status','% Concl.','% Plan.','Fim plan.','Fim real']],
+      body: data.slice(0, 50).map(a => [
+        a.tipo, a.estrutura, a.acao, a.responsavel, a.status,
+        toNum(a.pctConc) == null ? '' : String(a.pctConc)+'%',
+        toNum(a.pctPlan) == null ? 'auto' : String(a.pctPlan)+'%',
+        formatDate(a.fimReprog || a.fimPlan), formatDate(a.fimReal)
+      ]),
+      styles: { fontSize:8 },
+      headStyles: { fillColor:[30,74,110] },
+      margin: { left:10, right:10 }
+    });
+    doc.save('naza_audit_plano_aderencia.pdf');
+  }
+
+  function initSupabase() {
+    const lib = window.supabase;
+    if (!lib || typeof lib.createClient !== 'function') {
+      $('sbStatus').textContent = 'Biblioteca Supabase não carregou';
+      return;
+    }
+    sbClient = lib.createClient(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON);
+    $('sbStatus').textContent = 'Supabase pré-configurado';
+  }
+
+  async function sbSignup() {
+    if (!sbClient) return alert('Supabase não inicializado.');
+    const email = $('sbEmail').value.trim();
+    const password = $('sbPass').value;
+    if (!email || !password) return alert('Informe e-mail e senha.');
+    const { error } = await sbClient.auth.signUp({ email, password });
+    $('sbStatus').textContent = error ? ('Erro no cadastro: ' + error.message) : 'Cadastro enviado. Verifique seu e-mail se a confirmação estiver ativa.';
+  }
+
+  async function sbLogin() {
+    if (!sbClient) return alert('Supabase não inicializado.');
+    const email = $('sbEmail').value.trim();
+    const password = $('sbPass').value;
+    if (!email || !password) return alert('Informe e-mail e senha.');
+    const { error } = await sbClient.auth.signInWithPassword({ email, password });
+    $('sbStatus').textContent = error ? ('Login falhou: ' + error.message) : 'Login realizado com sucesso.';
+  }
+
+  async function sbLogout() {
+    if (!sbClient) return;
+    await sbClient.auth.signOut();
+    $('sbStatus').textContent = 'Sessão encerrada.';
+  }
+
+  async function sbPush() {
+    if (!sbClient) return alert('Supabase não inicializado.');
+    const { data:{ user } } = await sbClient.auth.getUser();
+    if (!user) return alert('Faça login primeiro.');
+    const payload = { user_id:user.id, activities, updated_at:new Date().toISOString() };
+    const { error } = await sbClient.from(TABLE_NAME).upsert(payload);
+    $('sbStatus').textContent = error ? ('Erro ao enviar: ' + error.message) : 'Dados enviados para a nuvem.';
+  }
+
+  async function sbPull() {
+    if (!sbClient) return alert('Supabase não inicializado.');
+    const { data:{ user } } = await sbClient.auth.getUser();
+    if (!user) return alert('Faça login primeiro.');
+    const { data, error } = await sbClient.from(TABLE_NAME).select('activities').eq('user_id', user.id).maybeSingle();
+    if (error) {
+      $('sbStatus').textContent = 'Erro ao baixar: ' + error.message;
+      return;
+    }
+    if (data && Array.isArray(data.activities)) {
+      activities = data.activities;
+      saveActivities();
+      clearForm();
+      render();
+      $('sbStatus').textContent = 'Dados baixados da nuvem.';
+    } else {
+      $('sbStatus').textContent = 'Sem base salva na nuvem para este usuário.';
+    }
+  }
+
+  $('f').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const obj = collectForm();
+    if (editingId) activities = activities.map(a => a.id === editingId ? obj : a);
+    else activities.unshift(obj);
+    saveActivities();
+    clearForm();
+    render();
+  });
+
+  $('btnCancel').onclick = clearForm;
+  $('btnNew').onclick = () => { clearForm(); window.scrollTo({ top:0, behavior:'smooth' }); };
+  $('btnExport').onclick = exportJson;
+  $('importFile').addEventListener('change', (e) => e.target.files[0] && importJson(e.target.files[0]));
+  $('btnPdf').onclick = exportPdf;
+  $('btnReset').onclick = () => {
+    if (!confirm('Apagar toda a base local e voltar para a base de teste?')) return;
+    localStorage.removeItem(LS_KEY);
+    loadActivities();
+    clearForm();
+    render();
+  };
+
+  ['q','fDataLimite'].forEach(id => $(id).addEventListener('input', render));
+  ['fEstrutura','fTipo','fResponsavel','fStatus'].forEach(id => $(id).addEventListener('change', render));
+
+  $('btnSbSignup').onclick = sbSignup;
+  $('btnSbLogin').onclick = sbLogin;
+  $('btnSbLogout').onclick = sbLogout;
+  $('btnSbPush').onclick = sbPush;
+  $('btnSbPull').onclick = sbPull;
+
+  loadActivities();
+  initSupabase();
+  render();
+})();
+</script>
+</body>
+</html>
