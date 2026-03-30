@@ -130,6 +130,42 @@
       .tab-btn{flex:1 1 160px;justify-content:center}
       button,.filebtn,.tab-btn{width:auto}
     }
+  
+    .filters-grid.filters-grid-extended{grid-template-columns:repeat(6,minmax(140px,1fr))}
+    @media (max-width:1320px){.filters-grid.filters-grid-extended{grid-template-columns:repeat(3,minmax(140px,1fr))}}
+    @media (max-width:760px){.filters-grid.filters-grid-extended{grid-template-columns:1fr}}
+    .selection-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:10px 0 14px}
+    .selection-chip{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:999px;background:rgba(16,185,129,.10);border:1px solid rgba(16,185,129,.18);font-weight:700;color:#134e38}
+    .selection-chip strong{font-size:.95rem}
+    .photo-trigger{margin-top:10px}
+    .photo-panel{margin-top:12px;padding:12px;border-radius:18px;background:rgba(255,255,255,.6);border:1px dashed rgba(20,83,45,.14)}
+    .photo-panel.hidden{display:none}
+    .photo-grid{display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:12px}
+    @media (max-width:760px){.photo-grid{grid-template-columns:1fr}}
+    .photo-slot{padding:10px;border-radius:16px;background:rgba(255,255,255,.72);border:1px solid rgba(20,83,45,.10)}
+    .photo-slot h4{margin:0 0 10px;font-size:.95rem;color:#1b4332}
+    .photo-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(82px,1fr));gap:8px;margin-top:10px}
+    .photo-thumb{position:relative;border-radius:12px;overflow:hidden;border:1px solid rgba(20,83,45,.14);background:#fff;aspect-ratio:1/1}
+    .photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .photo-thumb button{position:absolute;top:6px;right:6px;padding:4px 7px;border-radius:999px;font-size:.75rem;line-height:1;box-shadow:0 4px 10px rgba(0,0,0,.16)}
+    .mini-help{font-size:.8rem;color:#5b7f6d;margin-top:8px;line-height:1.4}
+    .formula-note{padding:10px 12px;border-radius:14px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.16);color:#27573f;font-size:.84rem;line-height:1.45}
+    .table-check{transform:scale(1.12);accent-color:#10b981;cursor:pointer}
+    .photos-pair{display:grid;grid-template-columns:repeat(2,minmax(76px,1fr));gap:8px;min-width:170px}
+    .photos-pair.single{grid-template-columns:1fr}
+    .photo-card-mini{display:flex;flex-direction:column;gap:4px}
+    .photo-card-mini span{font-size:.72rem;color:#4f7862;font-weight:700;text-align:center}
+    .photo-card-mini img{width:100%;height:78px;object-fit:cover;border-radius:10px;border:1px solid rgba(20,83,45,.14);background:#fff}
+    .photo-empty{font-size:.78rem;color:#7a9787;padding:8px;border:1px dashed rgba(20,83,45,.14);border-radius:10px;text-align:center;background:rgba(255,255,255,.55)}
+    .status-pill{display:inline-flex;align-items:center;padding:7px 10px;border-radius:999px;font-size:.78rem;font-weight:700;border:1px solid rgba(20,83,45,.12);white-space:nowrap}
+    .status-pill.s-Concluída{background:rgba(22,163,74,.10);color:#166534}
+    .status-pill.s-Em-andamento{background:rgba(59,130,246,.10);color:#1d4ed8}
+    .status-pill.s-Atrasada{background:rgba(239,68,68,.10);color:#b91c1c}
+    .status-pill.s-Reprogramada{background:rgba(245,158,11,.12);color:#b45309}
+    .status-pill.s-Não-iniciada{background:rgba(139,92,246,.10);color:#6d28d9}
+    .row-actions{display:flex;flex-wrap:wrap;gap:8px}
+    .toolbar-right{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
   </style>
 </head>
 <body>
@@ -158,11 +194,12 @@
 
   <div class="consult-panel">
     <h3>Filtros de consulta e sincronização</h3>
-    <div class="filters-grid">
+    <div class="filters-grid filters-grid-extended">
       <label>Estrutura<select id="fEstrutura"><option value="">Todas</option></select></label>
       <label>Tipo<select id="fTipo"><option value="">Todos</option></select></label>
       <label>Responsável<select id="fResponsavel"><option value="">Todos</option></select></label>
       <label>Status<select id="fStatus"><option value="">Todos</option></select></label>
+      <label>Início planejado de<input type="date" id="fDataIni" /></label>
       <label>Término planejado até<input type="date" id="fDataLimite" /></label>
     </div>
     <div class="cloud-quick" style="margin-top:12px">
@@ -229,6 +266,26 @@
         <div class="form-actions" style="margin-top:12px">
           <button type="submit" class="primary" id="btnSave">Salvar atividade</button>
           <button type="button" id="btnCancel">Cancelar edição</button>
+        </div>
+        <div class="formula-note" style="margin-top:12px">
+          <strong>Cálculo automático:</strong> quando houver <strong>Qtd. programada</strong> e <strong>Qtd. realizada</strong>, o sistema calcula <strong>% concluído = (qtd. realizada ÷ qtd. programada) × 100</strong>. O <strong>% planejado</strong> continua aceitando valor manual; se ficar em branco, o dashboard usa o avanço previsto pelas datas planejadas.
+        </div>
+        <button type="button" class="secondary photo-trigger" id="btnTogglePhotos">📷 Fotos antes / depois</button>
+        <div class="photo-panel hidden" id="photoPanel">
+          <div class="photo-grid">
+            <div class="photo-slot">
+              <h4>Antes</h4>
+              <label class="filebtn">Adicionar / tirar fotos<input type="file" id="beforePhotosInput" accept="image/*" capture="environment" multiple /></label>
+              <div class="mini-help">No celular pode abrir a câmera. No PC pode buscar arquivos existentes.</div>
+              <div class="photo-list" id="beforePhotoList"></div>
+            </div>
+            <div class="photo-slot">
+              <h4>Depois</h4>
+              <label class="filebtn">Adicionar / tirar fotos<input type="file" id="afterPhotosInput" accept="image/*" capture="environment" multiple /></label>
+              <div class="mini-help">As imagens ficam salvas junto da atividade e podem ser editadas depois.</div>
+              <div class="photo-list" id="afterPhotoList"></div>
+            </div>
+          </div>
         </div>
       </form>
       <div class="footer-help">A base inicial já veio com atividades de teste para acender os gráficos. Depois você pode apagar tudo e usar só sua operação real.</div>
@@ -326,10 +383,21 @@
             <h2>Lista de atividades</h2>
             <div class="tab-note">Mesma tabela original, agora em um espaço dedicado para leitura operacional.</div>
           </div>
+          <div class="selection-toolbar">
+            <span class="selection-chip">Selecionadas para gráficos / relatórios: <strong id="selectionCount">0</strong></span>
+            <div class="toolbar-right">
+              <button type="button" id="btnSelectVisible">Selecionar visíveis</button>
+              <button type="button" id="btnClearSelection">Limpar seleção</button>
+              <button type="button" id="btnJsonSelection">JSON da seleção</button>
+              <button type="button" id="btnPdfSelection">PDF da seleção</button>
+              <button type="button" class="secondary" id="btnWhatsapp">Enviar WhatsApp</button>
+            </div>
+          </div>
           <div class="scroll">
             <table>
               <thead>
                 <tr>
+                  <th><input type="checkbox" id="selectAllVisible" class="table-check" /></th>
                   <th>Tipo</th>
                   <th>Estrutura</th>
                   <th>Ação</th>
@@ -339,6 +407,7 @@
                   <th>Status</th>
                   <th>Fim plan.</th>
                   <th>Fim real</th>
+                  <th>Antes / depois</th>
                   <th>Ações</th>
                 </tr>
               </thead>
@@ -741,6 +810,7 @@
   let charts = {};
   let activities = [];
   let editingId = null;
+  let currentPhotos = { before: [], after: [] };
 
   if (typeof Chart !== 'undefined') {
     Chart.defaults.font.family = 'Inter, Segoe UI, Arial, sans-serif';
@@ -768,13 +838,155 @@
   const formatDate = (v) => { const d = parseDate(v); return d ? d.toLocaleDateString('pt-BR') : '—'; };
   const daysBetween = (a,b) => Math.round((b-a)/(24*3600*1000));
 
+
+  function normalizeActivity(a = {}) {
+    return {
+      ...a,
+      selected: !!a.selected,
+      photosBefore: Array.isArray(a.photosBefore) ? a.photosBefore : [],
+      photosAfter: Array.isArray(a.photosAfter) ? a.photosAfter : []
+    };
+  }
+
+  function calcPercentByQty(qProg, qReal) {
+    const prog = toNum(qProg);
+    const real = toNum(qReal);
+    if (prog == null || real == null || prog <= 0) return null;
+    return Math.max(0, Math.min(100, +(real / prog * 100).toFixed(2)));
+  }
+
+  function getVisibleFilteredActivities() {
+    const busca = norm($('q').value);
+    const estrutura = $('fEstrutura').value;
+    const tipo = $('fTipo').value;
+    const resp = $('fResponsavel').value;
+    const status = $('fStatus').value;
+    const dataIni = parseDate($('fDataIni').value);
+    const dataLimite = parseDate($('fDataLimite').value);
+    return activities.filter(a => {
+      const okBusca = !busca || norm([a.tipo,a.estrutura,a.local,a.acao,a.responsavel,a.status,a.obs].join(' ')).includes(busca);
+      const okEstr = !estrutura || a.estrutura === estrutura;
+      const okTipo = !tipo || a.tipo === tipo;
+      const okResp = !resp || a.responsavel === resp;
+      const okStatus = !status || a.status === status;
+      const iniPlan = parseDate(a.iniPlan);
+      const fimPlan = parseDate(a.fimReprog || a.fimPlan);
+      const okIni = !dataIni || !iniPlan || iniPlan >= dataIni;
+      const okFim = !dataLimite || !fimPlan || fimPlan <= dataLimite;
+      return okBusca && okEstr && okTipo && okResp && okStatus && okIni && okFim;
+    });
+  }
+
+  function getSelectedVisibleActivities(visible = getVisibleFilteredActivities()) {
+    return visible.filter(a => a.selected);
+  }
+
+  function getDashboardActivities() {
+    const visible = getVisibleFilteredActivities();
+    const selected = getSelectedVisibleActivities(visible);
+    return selected.length ? selected : visible;
+  }
+
+  function syncAutoPercent() {
+    const f = $('f');
+    const auto = calcPercentByQty(f.qProg.value, f.qReal.value);
+    if (auto != null) f.pctConc.value = String(auto).replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
+  }
+
+  function renderPhotoList(kind) {
+    const holder = $(kind === 'before' ? 'beforePhotoList' : 'afterPhotoList');
+    const arr = currentPhotos[kind];
+    holder.innerHTML = arr.length ? arr.map((src, idx) => `
+      <div class="photo-thumb">
+        <img src="${esc(src)}" alt="Foto ${kind} ${idx+1}" />
+        <button type="button" class="danger" data-remove-photo="${kind}:${idx}">×</button>
+      </div>`).join('') : `<div class="photo-empty">Nenhuma foto ${kind === 'before' ? 'antes' : 'depois'}.</div>`;
+    holder.querySelectorAll('[data-remove-photo]').forEach(btn => {
+      btn.onclick = () => {
+        const [photoKind, index] = btn.dataset.removePhoto.split(':');
+        currentPhotos[photoKind].splice(Number(index), 1);
+        renderPhotoList(photoKind);
+      };
+    });
+  }
+
+  function renderAllPhotoLists() {
+    renderPhotoList('before');
+    renderPhotoList('after');
+  }
+
+  function photoPairHtml(a) {
+    const before = Array.isArray(a.photosBefore) ? a.photosBefore : [];
+    const after = Array.isArray(a.photosAfter) ? a.photosAfter : [];
+    const hasBefore = before[0];
+    const hasAfter = after[0];
+    if (!hasBefore && !hasAfter) return '<div class="photo-empty">Sem fotos</div>';
+    return `<div class="photos-pair ${(!hasBefore || !hasAfter) ? 'single' : ''}">
+      <div class="photo-card-mini">
+        <span>Antes${before.length > 1 ? ` (+${before.length-1})` : ''}</span>
+        ${hasBefore ? `<img src="${esc(hasBefore)}" alt="Antes" />` : `<div class="photo-empty">Sem antes</div>`}
+      </div>
+      <div class="photo-card-mini">
+        <span>Depois${after.length > 1 ? ` (+${after.length-1})` : ''}</span>
+        ${hasAfter ? `<img src="${esc(hasAfter)}" alt="Depois" />` : `<div class="photo-empty">Sem depois</div>`}
+      </div>
+    </div>`;
+  }
+
+  function fileToDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function appendPhotoFiles(kind, fileList) {
+    const files = [...(fileList || [])].filter(f => /^image\//.test(f.type || ''));
+    for (const file of files) {
+      const dataUrl = await fileToDataURL(file);
+      currentPhotos[kind].push(dataUrl);
+    }
+    renderPhotoList(kind);
+  }
+
+  function buildShareText(data, metrics) {
+    const lines = [
+      '📌 RELATÓRIO OPERACIONAL DE ATIVIDADES',
+      '',
+      `✅ Atividades consideradas: ${metrics.total}`,
+      `📈 Aderência global: ${pctText(metrics.adherence)}`,
+      `⏱️ Pontualidade: ${pctText(metrics.onTime)}`,
+      `🚨 Atrasadas: ${metrics.delayed}`,
+      `🔁 Reprogramadas: ${metrics.reprogramadas}`,
+      '',
+      '🗂️ DETALHAMENTO'
+    ];
+    data.forEach((a, idx) => {
+      lines.push(
+        '',
+        `${idx+1}. ${a.acao || 'Atividade'}`,
+        `   ├ Tipo: ${a.tipo || '—'}`,
+        `   ├ Estrutura: ${a.estrutura || '—'}`,
+        `   ├ Responsável: ${a.responsavel || '—'}`,
+        `   ├ Status: ${a.status || '—'}`,
+        `   ├ % concluído: ${toNum(a.pctConc) == null ? '—' : String(a.pctConc) + '%'}`,
+        `   ├ Prazo: ${formatDate(a.fimReprog || a.fimPlan)}`,
+        `   └ Fotos: antes ${a.photosBefore?.length || 0} | depois ${a.photosAfter?.length || 0}`
+      );
+      if (a.obs) lines.push(`   📝 ${a.obs}`);
+    });
+    return lines.join('\n');
+  }
+
   function loadActivities() {
     try {
       const raw = localStorage.getItem(LS_KEY);
       const arr = raw ? JSON.parse(raw) : null;
-      activities = Array.isArray(arr) && arr.length ? arr : DEFAULT_DATA.slice();
+      activities = (Array.isArray(arr) && arr.length ? arr : DEFAULT_DATA.slice()).map(normalizeActivity);
     } catch {
-      activities = DEFAULT_DATA.slice();
+      activities = DEFAULT_DATA.slice().map(normalizeActivity);
     }
   }
 
@@ -806,22 +1018,7 @@
   }
 
   function getFilteredActivities() {
-    const busca = norm($('q').value);
-    const estrutura = $('fEstrutura').value;
-    const tipo = $('fTipo').value;
-    const resp = $('fResponsavel').value;
-    const status = $('fStatus').value;
-    const dataLimite = parseDate($('fDataLimite').value);
-    return activities.filter(a => {
-      const okBusca = !busca || norm([a.tipo,a.estrutura,a.local,a.acao,a.responsavel,a.status,a.obs].join(' ')).includes(busca);
-      const okEstr = !estrutura || a.estrutura === estrutura;
-      const okTipo = !tipo || a.tipo === tipo;
-      const okResp = !resp || a.responsavel === resp;
-      const okStatus = !status || a.status === status;
-      const fimPlan = parseDate(a.fimReprog || a.fimPlan);
-      const okData = !dataLimite || !fimPlan || fimPlan <= dataLimite;
-      return okBusca && okEstr && okTipo && okResp && okStatus && okData;
-    });
+    return getDashboardActivities();
   }
 
   function populateFilters() {
@@ -1038,7 +1235,10 @@
       else insights.push(`A pontualidade está em ${pctText(metrics.onTime)}.`);
     }
     $('insightsList').innerHTML = insights.slice(0,6).map(i => `<li>${esc(i)}</li>`).join('');
-    $('dataMeta').textContent = `${data.length} atividades na carteira filtrada · ${activities.length} atividades salvas no navegador`;
+    const visible = getVisibleFilteredActivities();
+    const selectedVisible = getSelectedVisibleActivities(visible).length;
+    $('selectionCount').textContent = String(activities.filter(a => a.selected).length);
+    $('dataMeta').textContent = `${visible.length} atividades filtradas · ${selectedVisible ? selectedVisible + ' selecionadas em uso nos gráficos' : 'todas as filtradas em uso nos gráficos'} · ${activities.length} atividades salvas no navegador`;
   }
 
   function renderTable(data) {
@@ -1046,6 +1246,7 @@
     $('tbody').innerHTML = data.slice().sort((a,b) => (order[a.status] || 99) - (order[b.status] || 99)).map(a => {
       const cls = 's-' + (a.status || 'Não iniciada').replace(/\s+/g, '-');
       return `<tr>
+        <td><input type="checkbox" class="table-check" data-select="${a.id}" ${a.selected ? 'checked' : ''}></td>
         <td>${esc(a.tipo)}</td>
         <td>${esc(a.estrutura)}</td>
         <td>${esc(a.acao)}</td>
@@ -1055,6 +1256,7 @@
         <td><span class="status-pill ${cls}">${esc(a.status || 'Não iniciada')}</span></td>
         <td>${formatDate(a.fimReprog || a.fimPlan)}</td>
         <td>${formatDate(a.fimReal)}</td>
+        <td>${photoPairHtml(a)}</td>
         <td class="row-actions">
           <button data-edit="${a.id}">Editar</button>
           <button data-del="${a.id}" class="danger">Excluir</button>
@@ -1063,6 +1265,17 @@
     }).join('');
     $('tbody').querySelectorAll('[data-edit]').forEach(btn => btn.onclick = () => editActivity(btn.dataset.edit));
     $('tbody').querySelectorAll('[data-del]').forEach(btn => btn.onclick = () => deleteActivity(btn.dataset.del));
+    $('tbody').querySelectorAll('[data-select]').forEach(box => box.onchange = () => {
+      const item = activities.find(a => a.id === box.dataset.select);
+      if (!item) return;
+      item.selected = box.checked;
+      saveActivities();
+      render();
+    });
+    const visibleIds = new Set(data.map(a => a.id));
+    const visibleSelected = data.length && data.every(a => a.selected);
+    $('selectAllVisible').checked = !!(data.length && visibleSelected);
+    $('selectAllVisible').indeterminate = !visibleSelected && data.some(a => a.selected);
   }
 
   function renderCharts(data, metrics) {
@@ -1224,23 +1437,30 @@
 
   function render() {
     populateFilters();
-    const filtered = getFilteredActivities();
-    const metrics = computeMetrics(filtered);
+    const dashboardData = getFilteredActivities();
+    const visibleData = getVisibleFilteredActivities();
+    const metrics = computeMetrics(dashboardData);
     renderKpis(metrics);
-    renderInsights(filtered, metrics);
-    renderTable(filtered);
-    renderCharts(filtered, metrics);
+    renderInsights(dashboardData, metrics);
+    renderTable(visibleData);
+    renderCharts(dashboardData, metrics);
   }
 
   function fillForm(a) {
     const f = $('f');
     Object.entries(a).forEach(([k,v]) => { if (f.elements[k]) f.elements[k].value = v == null ? '' : v; });
+    currentPhotos = { before: [...(a.photosBefore || [])], after: [...(a.photosAfter || [])] };
+    renderAllPhotoLists();
+    $('photoPanel').classList.toggle('hidden', !(currentPhotos.before.length || currentPhotos.after.length));
     $('formTitle').textContent = 'Editando atividade';
   }
 
   function clearForm() {
     $('f').reset();
     editingId = null;
+    currentPhotos = { before: [], after: [] };
+    renderAllPhotoLists();
+    $('photoPanel').classList.add('hidden');
     $('formTitle').textContent = 'Cadastro de atividade';
   }
 
@@ -1281,15 +1501,23 @@
       pctPlan: f.pctPlan.value,
       farol: f.farol.value.trim(),
       causaAtraso: f.causaAtraso.value,
-      obs: f.obs.value.trim()
+      obs: f.obs.value.trim(),
+      selected: !!(editingId ? (activities.find(a => a.id === editingId)?.selected) : false),
+      photosBefore: [...currentPhotos.before],
+      photosAfter: [...currentPhotos.after]
     };
   }
 
-  function exportJson() {
-    const blob = new Blob([JSON.stringify(activities, null, 2)], { type:'application/json' });
+  function getReportActivities() {
+    const selectedVisible = getSelectedVisibleActivities(getVisibleFilteredActivities());
+    return selectedVisible.length ? selectedVisible : getFilteredActivities();
+  }
+
+  function exportJson(data = getReportActivities(), fileName = 'naza_plano_aderencia_integrada.json') {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'naza_plano_aderencia_integrada.json';
+    a.download = fileName;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -1300,7 +1528,7 @@
       try {
         const arr = JSON.parse(r.result);
         if (!Array.isArray(arr)) throw new Error('Arquivo inválido');
-        activities = arr;
+        activities = arr.map(normalizeActivity);
         saveActivities();
         clearForm();
         render();
@@ -1311,10 +1539,9 @@
     r.readAsText(file, 'utf-8');
   }
 
-  async function exportPdf() {
+  async function exportPdf(data = getReportActivities(), fileName = 'naza_audit_plano_aderencia.pdf') {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
-    const data = getFilteredActivities();
     const metrics = computeMetrics(data);
     doc.setFontSize(16);
     doc.text('NAZA Audit — Plano de Ação + Aderência Integrada', 14, 14);
@@ -1322,18 +1549,63 @@
     doc.text(`Aderência: ${pctText(metrics.adherence)} | Pontualidade: ${pctText(metrics.onTime)} | Atividades: ${metrics.total} | Atrasadas: ${metrics.delayed}`, 14, 21);
     doc.autoTable({
       startY: 28,
-      head: [['Tipo','Estrutura','Ação','Responsável','Status','% Concl.','% Plan.','Fim plan.','Fim real']],
-      body: data.slice(0, 50).map(a => [
+      head: [['Tipo','Estrutura','Ação','Responsável','Status','% Concl.','% Plan.','Fim plan.','Fim real','Fotos']],
+      body: data.slice(0, 60).map(a => [
         a.tipo, a.estrutura, a.acao, a.responsavel, a.status,
         toNum(a.pctConc) == null ? '' : String(a.pctConc)+'%',
         toNum(a.pctPlan) == null ? 'auto' : String(a.pctPlan)+'%',
-        formatDate(a.fimReprog || a.fimPlan), formatDate(a.fimReal)
+        formatDate(a.fimReprog || a.fimPlan), formatDate(a.fimReal),
+        `Antes: ${a.photosBefore?.length || 0} | Depois: ${a.photosAfter?.length || 0}`
       ]),
-      styles: { fontSize:8 },
+      styles: { fontSize:8, cellPadding:2 },
       headStyles: { fillColor:[30,74,110] },
       margin: { left:10, right:10 }
     });
-    doc.save('naza_audit_plano_aderencia.pdf');
+    let y = doc.lastAutoTable ? doc.lastAutoTable.finalY + 8 : 36;
+    const photos = data.filter(a => (a.photosBefore?.length || 0) || (a.photosAfter?.length || 0)).slice(0, 12);
+    for (const a of photos) {
+      if (y > 150) { doc.addPage(); y = 18; }
+      doc.setFontSize(10);
+      doc.text(String(a.acao || 'Atividade').slice(0, 110), 14, y);
+      y += 4;
+      const before = a.photosBefore?.[0];
+      const after = a.photosAfter?.[0];
+      if (before) { try { doc.addImage(before, 'JPEG', 14, y, 55, 40); } catch {} }
+      if (after) { try { doc.addImage(after, 'JPEG', 78, y, 55, 40); } catch {} }
+      doc.setFontSize(8);
+      doc.text('Antes', 14, y + 44);
+      doc.text('Depois', 78, y + 44);
+      y += 50;
+    }
+    doc.save(fileName);
+  }
+
+  async function shareWhatsappReport() {
+    const data = getReportActivities();
+    if (!data.length) return alert('Nenhuma atividade filtrada ou selecionada para enviar.');
+    const metrics = computeMetrics(data);
+    const text = buildShareText(data, metrics);
+    const files = [];
+    data.slice(0, 8).forEach((a, idx) => {
+      [['antes', a.photosBefore?.[0]], ['depois', a.photosAfter?.[0]]].forEach(([label, src], fileIdx) => {
+        if (!src || !src.startsWith('data:image/')) return;
+        const parts = src.split(',');
+        const mime = parts[0].match(/data:(.*?);base64/);
+        if (!mime) return;
+        const bin = atob(parts[1]);
+        const arr = new Uint8Array(bin.length);
+        for (let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+        files.push(new File([arr], `atividade_${idx+1}_${label}_${fileIdx+1}.jpg`, { type: mime[1] }));
+      });
+    });
+    if (navigator.share && files.length && navigator.canShare && navigator.canShare({ files })) {
+      try {
+        await navigator.share({ title:'Relatório operacional de atividades', text, files });
+        return;
+      } catch (e) {}
+    }
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
   }
 
   function initSupabase() {
@@ -1389,7 +1661,7 @@
       return;
     }
     if (data && Array.isArray(data.activities)) {
-      activities = data.activities;
+      activities = data.activities.map(normalizeActivity);
       saveActivities();
       clearForm();
       render();
@@ -1402,18 +1674,18 @@
   $('f').addEventListener('submit', (e) => {
     e.preventDefault();
     const obj = collectForm();
-    if (editingId) activities = activities.map(a => a.id === editingId ? obj : a);
-    else activities.unshift(obj);
+    if (editingId) activities = activities.map(a => a.id === editingId ? normalizeActivity(obj) : a);
+    else activities.unshift(normalizeActivity(obj));
     saveActivities();
     clearForm();
     render();
   });
 
   $('btnCancel').onclick = clearForm;
-  $('btnNew').onclick = () => { clearForm(); setActiveTab('dashboard'); window.scrollTo({ top:0, behavior:'smooth' }); };
-  $('btnExport').onclick = exportJson;
+  $('btnNew').onclick = () => { clearForm(); setActiveTab('dashboard'); window.scrollTo({ top:0, behavior:'smooth' }); setTimeout(() => $('f').elements.tipo?.focus(), 120); };
+  $('btnExport').onclick = () => exportJson(activities, 'naza_plano_aderencia_integrada_completo.json');
   $('importFile').addEventListener('change', (e) => e.target.files[0] && importJson(e.target.files[0]));
-  $('btnPdf').onclick = exportPdf;
+  $('btnPdf').onclick = () => exportPdf(getReportActivities(), 'naza_audit_plano_aderencia_filtrado.pdf');
   $('btnReset').onclick = () => {
     if (!confirm('Apagar toda a base local e voltar para a base de teste?')) return;
     localStorage.removeItem(LS_KEY);
@@ -1422,8 +1694,34 @@
     render();
   };
 
-  ['q','fDataLimite'].forEach(id => $(id).addEventListener('input', render));
+  ['q','fDataIni','fDataLimite'].forEach(id => $(id).addEventListener('input', render));
   ['fEstrutura','fTipo','fResponsavel','fStatus'].forEach(id => $(id).addEventListener('change', render));
+
+  $('btnTogglePhotos').onclick = () => $('photoPanel').classList.toggle('hidden');
+  $('beforePhotosInput').addEventListener('change', async (e) => { await appendPhotoFiles('before', e.target.files); e.target.value = ''; $('photoPanel').classList.remove('hidden'); });
+  $('afterPhotosInput').addEventListener('change', async (e) => { await appendPhotoFiles('after', e.target.files); e.target.value = ''; $('photoPanel').classList.remove('hidden'); });
+  ['qProg','qReal'].forEach(name => $('f').elements[name].addEventListener('input', syncAutoPercent));
+  $('btnJsonSelection').onclick = () => exportJson(getReportActivities(), 'naza_plano_aderencia_selecao.json');
+  $('btnPdfSelection').onclick = () => exportPdf(getReportActivities(), 'naza_audit_plano_aderencia_selecao.pdf');
+  $('btnWhatsapp').onclick = shareWhatsappReport;
+  $('btnSelectVisible').onclick = () => {
+    const visibleIds = new Set(getVisibleFilteredActivities().map(a => a.id));
+    activities = activities.map(a => visibleIds.has(a.id) ? { ...a, selected:true } : a);
+    saveActivities();
+    render();
+  };
+  $('btnClearSelection').onclick = () => {
+    activities = activities.map(a => ({ ...a, selected:false }));
+    saveActivities();
+    render();
+  };
+  $('selectAllVisible').onchange = () => {
+    const checked = $('selectAllVisible').checked;
+    const visibleIds = new Set(getVisibleFilteredActivities().map(a => a.id));
+    activities = activities.map(a => visibleIds.has(a.id) ? { ...a, selected:checked } : a);
+    saveActivities();
+    render();
+  };
 
   $('btnSbSignup').onclick = sbSignup;
   $('btnSbLogin').onclick = sbLogin;
@@ -1444,6 +1742,7 @@
 
   loadActivities();
   initSupabase();
+  renderAllPhotoLists();
   setActiveTab('dashboard');
   render();
 })();
