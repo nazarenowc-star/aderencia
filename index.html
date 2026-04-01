@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f5132" />
   <title>NAZA Audit — Plano de Ação + Aderência Integrada</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -11,6 +12,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- Dexie.js para IndexedDB -->
+  <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
   <style>
     :root {
       --bg:#e8fff0;
@@ -62,6 +65,7 @@
     button.primary{background:linear-gradient(135deg,#34d399,#10b981);border-color:transparent;color:#05321c;font-weight:800}
     button.secondary{background:rgba(16,185,129,.10);color:#0f5132;border-color:rgba(16,185,129,.20)}
     button.danger{background:rgba(239,68,68,.12);color:#ffd5d5;border-color:rgba(239,68,68,.24)}
+    button.warning{background:rgba(245,158,11,.12);color:#92400e;border-color:rgba(245,158,11,.24)}
     .filebtn input{display:none}
     .tab-nav{margin-bottom:14px;padding:8px;border:1px solid var(--border);background:rgba(255,255,255,.76);border-radius:20px;box-shadow:var(--shadow);backdrop-filter:blur(10px)}
     .tab-btn{font-weight:700;border-radius:14px;padding:12px 16px}
@@ -82,6 +86,11 @@
     .cloud-quick{margin-top:14px;gap:10px}
     .cloud-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(34,197,94,.12);color:#0f5132;border:1px solid rgba(34,197,94,.22);padding:10px 13px;border-radius:999px;font-weight:700}
     .cloud-badge::before{content:"";width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 10px #22c55e}
+    .cloud-badge.offline{background:rgba(239,68,68,.12);color:#991b1b;border-color:rgba(239,68,68,.22)}
+    .cloud-badge.offline::before{background:#ef4444;box-shadow:0 0 10px #ef4444}
+    .cloud-badge.syncing{background:rgba(245,158,11,.12);color:#92400e;border-color:rgba(245,158,11,.22)}
+    .cloud-badge.syncing::before{background:#f59e0b;box-shadow:0 0 10px #f59e0b;animation:pulse 1.5s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
     .form-grid{display:grid;grid-template-columns:repeat(2,minmax(150px,1fr));gap:12px}
     .form-grid .full{grid-column:1/-1}
     @media (max-width:760px){.form-grid{grid-template-columns:1fr}}
@@ -114,6 +123,8 @@
     th,td{padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}
     tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
     tbody tr:hover{background:rgba(91,140,255,.08)}
+    tbody tr.hidden-row{opacity:.5;background:rgba(0,0,0,.05)}
+    tbody tr.hidden-row td{text-decoration:line-through;color:#6b7280}
     .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.08);font-size:.8rem;font-weight:700;white-space:nowrap}
     .pill.ok{background:rgba(34,197,94,.12);color:#d9ffe5}
     .pill.warn{background:rgba(245,158,11,.14);color:#ffe7ba}
@@ -130,7 +141,7 @@
       .tab-btn{flex:1 1 160px;justify-content:center}
       button,.filebtn,.tab-btn{width:auto}
     }
-  
+
     .filters-grid.filters-grid-extended{grid-template-columns:repeat(6,minmax(140px,1fr))}
     @media (max-width:1320px){.filters-grid.filters-grid-extended{grid-template-columns:repeat(3,minmax(140px,1fr))}}
     @media (max-width:760px){.filters-grid.filters-grid-extended{grid-template-columns:1fr}}
@@ -165,7 +176,9 @@
     .status-pill.s-Não-iniciada{background:rgba(139,92,246,.10);color:#6d28d9}
     .row-actions{display:flex;flex-wrap:wrap;gap:8px}
     .toolbar-right{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-
+    .sync-status{font-size:.85rem;color:#4f7862;margin-left:auto}
+    .hidden-activities-info{background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:12px;padding:8px 12px;margin-bottom:10px;font-size:.9rem;color:#6d28d9;display:none}
+    .hidden-activities-info.visible{display:block}
   </style>
 </head>
 <body>
@@ -189,7 +202,13 @@
     <button id="btnExport">Exportar JSON</button>
     <label class="filebtn">Importar JSON<input type="file" id="importFile" accept=".json,application/json" /></label>
     <button id="btnPdf">PDF executivo</button>
+    <button class="warning" id="btnToggleHidden">🙈 Mostrar ocultas</button>
     <button class="danger" id="btnReset">Limpar base local</button>
+    <span class="sync-status" id="syncStatus">⚡ IndexedDB pronto</span>
+  </div>
+
+  <div class="hidden-activities-info" id="hiddenInfo">
+    <strong>Atividades ocultas:</strong> <span id="hiddenCount">0</span> atividade(s) oculta(s). Use o botão "Mostrar ocultas" na toolbar para visualizá-las.
   </div>
 
   <div class="consult-panel">
@@ -212,7 +231,7 @@
       <button id="btnSbPull">Baixar</button>
       <button id="btnSbLogout">Sair</button>
     </div>
-    <div class="footer-help">No front eu deixei só login e sincronização. URL e chave pública ficaram internas no código. Senha de usuário nunca fica gravada no HTML.</div>
+    <div class="footer-help">Sistema usa IndexedDB (sem limite de 5MB). Fotos são comprimidas automaticamente. Funciona offline e sincroniza quando voltar a internet.</div>
   </div>
 
   <div class="tab-nav" id="tabNav">
@@ -282,13 +301,13 @@
             <div class="photo-slot">
               <h4>Depois</h4>
               <label class="filebtn">Adicionar / tirar fotos<input type="file" id="afterPhotosInput" accept="image/*" capture="environment" multiple /></label>
-              <div class="mini-help">As imagens ficam salvas junto da atividade e podem ser editadas depois.</div>
+              <div class="mini-help">As imagens são comprimidas automaticamente (máx 1200px, 70% qualidade).</div>
               <div class="photo-list" id="afterPhotoList"></div>
             </div>
           </div>
         </div>
       </form>
-      <div class="footer-help">A base inicial já veio com atividades de teste para acender os gráficos. Depois você pode apagar tudo e usar só sua operação real.</div>
+      <div class="footer-help">Dados salvos em IndexedDB (centenas de MB disponíveis). Sincroniza automaticamente com a nuvem quando online.</div>
     </section>
 
     <section>
@@ -421,403 +440,27 @@
 </div>
 
 <script>
+
 (() => {
-  const LS_KEY = 'naza_plano_aderencia_integrada_v1';
-  const DEFAULT_DATA = [
-  {
-    "id": "seed-1",
-    "tipo": "INFRA",
-    "estrutura": "CAVA GERMANO",
-    "local": "Acesso da Serra das Araras",
-    "acao": "Correção de erosões no acesso Serra das Araras",
-    "responsavel": "Técnico de operação",
-    "status": "Concluída",
-    "iniPlan": "2026-03-05",
-    "fimPlan": "2026-03-08",
-    "iniReal": "2026-03-05",
-    "fimReprog": "2026-03-14",
-    "fimReal": "2026-03-15",
-    "qProg": 1,
-    "qReal": 1,
-    "pctConc": 100,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-2",
-    "tipo": "INFRA",
-    "estrutura": "CAVA GERMANO",
-    "local": "Direcionamento da drenagem",
-    "acao": "Direcionamento da drenagem e realizar revestimento com blocos ",
-    "responsavel": "Técnico de operação",
-    "status": "Em andamento",
-    "iniPlan": "2026-03-05",
-    "fimPlan": "2026-03-08",
-    "iniReal": "2026-03-05",
-    "fimReprog": "",
-    "fimReal": "",
-    "qProg": 1,
-    "qReal": 0.5,
-    "pctConc": 50.0,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-3",
-    "tipo": "INFRA",
-    "estrutura": "CAVA GERMANO",
-    "local": "Regularização e/ou impeza do piso",
-    "acao": "Regularização e/ou limpeza do piso para disposição.",
-    "responsavel": "Técnico de operação",
-    "status": "Concluída",
-    "iniPlan": "2026-03-05",
-    "fimPlan": "2026-03-08",
-    "iniReal": "2026-03-16",
-    "fimReprog": "",
-    "fimReal": "2026-03-18",
-    "qProg": 1,
-    "qReal": 1,
-    "pctConc": 100,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-4",
-    "tipo": "INFRA",
-    "estrutura": "CAVA GERMANO",
-    "local": "Retirada de interferências",
-    "acao": "Retirada das interferências da equipe de projetos",
-    "responsavel": "Técnico de operação",
-    "status": "Em andamento",
-    "iniPlan": "2026-03-05",
-    "fimPlan": "2026-03-08",
-    "iniReal": "2026-03-16",
-    "fimReprog": "",
-    "fimReal": "",
-    "qProg": 1,
-    "qReal": 0.9,
-    "pctConc": 90.0,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-5",
-    "tipo": "INFRA",
-    "estrutura": "CAVA GERMANO",
-    "local": "Sump",
-    "acao": "Realizar construção de Sump no pé da serra das arraras ",
-    "responsavel": "Técnico de operação",
-    "status": "Atrasada",
-    "iniPlan": "2026-03-16",
-    "fimPlan": "2026-03-23",
-    "iniReal": "",
-    "fimReprog": "",
-    "fimReal": "",
-    "qProg": 1,
-    "qReal": "",
-    "pctConc": 0,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-6",
-    "tipo": "INFRA",
-    "estrutura": "CAVA GERMANO",
-    "local": "Sump",
-    "acao": "Realizar adequação de Sump na parte superior do acesso da serra das arraras",
-    "responsavel": "Técnico de operação",
-    "status": "Atrasada",
-    "iniPlan": "2026-03-16",
-    "fimPlan": "2026-03-23",
-    "iniReal": "",
-    "fimReprog": "",
-    "fimReal": "",
-    "qProg": 1,
-    "qReal": "",
-    "pctConc": 0,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-7",
-    "tipo": "INFRA",
-    "estrutura": "CAVA GERMANO",
-    "local": "Dessasoreamento do canal",
-    "acao": "Desassoreamento do canal de drenagem",
-    "responsavel": "Técnico de operação",
-    "status": "Em andamento",
-    "iniPlan": "2026-03-05",
-    "fimPlan": "2026-03-08",
-    "iniReal": "2026-03-16",
-    "fimReprog": "",
-    "fimReal": "",
-    "qProg": 1,
-    "qReal": 0.5,
-    "pctConc": 50.0,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-8",
-    "tipo": "INSTRUMENTAÇÃO",
-    "estrutura": "CAVA GERMANO",
-    "local": "PA035",
-    "acao": "Realizar alteamento de instrumento e verificar se há possibilidade de outros alteamentos",
-    "responsavel": "Eduardo Dutra",
-    "status": "Concluída",
-    "iniPlan": "2026-03-04",
-    "fimPlan": "2026-03-09",
-    "iniReal": "2026-03-04",
-    "fimReprog": "",
-    "fimReal": "2026-03-06",
-    "qProg": 1,
-    "qReal": 1,
-    "pctConc": 100,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-9",
-    "tipo": "ANOMALIAS",
-    "estrutura": "PDER SUL",
-    "local": "PDE de estéril do DP02",
-    "acao": "Ajuste da drenagem da PDE de estéril do DP02",
-    "responsavel": "Técnico de operação",
-    "status": "Concluída",
-    "iniPlan": "2026-01-23",
-    "fimPlan": "2026-01-30",
-    "iniReal": "2026-01-24",
-    "fimReprog": "",
-    "fimReal": "2026-02-24",
-    "qProg": 1,
-    "qReal": 1,
-    "pctConc": 100,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-10",
-    "tipo": "ANOMALIAS",
-    "estrutura": "PDER SUL",
-    "local": "Cinturão",
-    "acao": "Correção de erosões na face dos taludes de todo o cinturão",
-    "responsavel": "Técnico de operação",
-    "status": "Concluída",
-    "iniPlan": "2026-01-20",
-    "fimPlan": "2026-01-09",
-    "iniReal": "2026-01-27",
-    "fimReprog": "",
-    "fimReal": "2026-02-22",
-    "qProg": 1,
-    "qReal": 1,
-    "pctConc": 100,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-11",
-    "tipo": "ANOMALIAS",
-    "estrutura": "PDER SUL",
-    "local": "PDE estéril",
-    "acao": "Correção de erosões acima do canteiro do CRD",
-    "responsavel": "Técnico de operação",
-    "status": "Concluída",
-    "iniPlan": "2026-02-09",
-    "fimPlan": "2026-02-15",
-    "iniReal": "2026-03-04",
-    "fimReprog": "",
-    "fimReal": "2026-03-08",
-    "qProg": 1,
-    "qReal": 1,
-    "pctConc": 100,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-12",
-    "tipo": "INFRA",
-    "estrutura": "PDER SUL",
-    "local": "Caixa de dissipação DA03",
-    "acao": "Realizar o dessasoriamento da caixa de dissipação da DA03",
-    "responsavel": "Técnico de operação",
-    "status": "Concluída",
-    "iniPlan": "2026-03-09",
-    "fimPlan": "2026-03-13",
-    "iniReal": "2026-03-10",
-    "fimReprog": "",
-    "fimReal": "2026-03-12",
-    "qProg": 1,
-    "qReal": 1,
-    "pctConc": 100,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-13",
-    "tipo": "ANOMALIAS",
-    "estrutura": "PDER SUL",
-    "local": "1226-1315 9",
-    "acao": "Analisar possibilidade de recuperação de instrumento",
-    "responsavel": "Eduardo Dutra",
-    "status": "Concluída",
-    "iniPlan": "2026-01-16",
-    "fimPlan": "2026-01-19",
-    "iniReal": "2026-01-16",
-    "fimReprog": "",
-    "fimReal": "2026-01-16",
-    "qProg": 1,
-    "qReal": 1,
-    "pctConc": 100,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-14",
-    "tipo": "INFRA",
-    "estrutura": "PDER SUL",
-    "local": "CP02",
-    "acao": "Limpeza do CP02, trecho retilineo na elevação da cota 1040",
-    "responsavel": "Técnico de operação",
-    "status": "Concluída",
-    "iniPlan": "2026-01-23",
-    "fimPlan": "2026-01-30",
-    "iniReal": "2026-01-30",
-    "fimReprog": "",
-    "fimReal": "2026-02-02",
-    "qProg": 1,
-    "qReal": 1,
-    "pctConc": 100,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-15",
-    "tipo": "ANOMALIAS",
-    "estrutura": "PDER SUL",
-    "local": "Correção de erosões no cinturão",
-    "acao": "Realizar correção da erosão no cinturão (para evitar maiores impactos no instrumento 21PI340, na berma abaixo) ",
-    "responsavel": "Técnico de operação",
-    "status": "Concluída",
-    "iniPlan": "2026-03-13",
-    "fimPlan": "2026-03-18",
-    "iniReal": "2026-03-16",
-    "fimReprog": "",
-    "fimReal": "2026-03-16",
-    "qProg": 1,
-    "qReal": 1,
-    "pctConc": 100,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-16",
-    "tipo": "INFRA",
-    "estrutura": "PDER SUL",
-    "local": "Bancos 1040 ",
-    "acao": "Proteção vegetal taludes do banco 1040 encontro da pilha 1010",
-    "responsavel": "GGO",
-    "status": "Concluída",
-    "iniPlan": "2026-02-10",
-    "fimPlan": "2026-03-10",
-    "iniReal": "2026-01-10",
-    "fimReprog": "",
-    "fimReal": "2026-02-03",
-    "qProg": 1,
-    "qReal": 1,
-    "pctConc": 100,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-17",
-    "tipo": "INFRA",
-    "estrutura": "PDER SUL",
-    "local": "PDE de estéril do DP02",
-    "acao": "Realizar conferência topográfica dos bancos 1080 e 1090 do DP02",
-    "responsavel": "Topógrafos",
-    "status": "Concluída",
-    "iniPlan": "2026-02-05",
-    "fimPlan": "2026-02-06",
-    "iniReal": "",
-    "fimReprog": "",
-    "fimReal": "2026-02-06",
-    "qProg": 1,
-    "qReal": 1,
-    "pctConc": 100,
-    "pctPlan": 100,
-    "farol": "",
-    "causaAtraso": "",
-    "obs": ""
-  },
-  {
-    "id": "seed-18",
-    "tipo": "INSTRUMENTAÇÃO",
-    "estrutura": "CAVA GERMANO",
-    "local": "Cava de Germano",
-    "acao": "Verificar os instrumentos que será necessário alteamento ",
-    "responsavel": "Sandro/Esmael",
-    "status": "Concluída",
-    "iniPlan": "2026-03-17",
-    "fimPlan": "2026-03-20",
-    "iniReal": "2026-03-24",
-    "fimReprog": "",
-    "fimReal": "2026-03-24",
-    "qProg": 1,
-    "qReal": 1,
-    "pctConc": 100,
-    "pctPlan": 100,
-    "farol": "n",
-    "causaAtraso": "",
-    "obs": ""
-  }
-];
+  // ===== CONFIGURAÇÕES =====
+  const DB_NAME = 'naza_audit_db';
+  const DB_VERSION = 1;
   const DEFAULT_SUPABASE_URL = "https://duprxuhfltacvfgbjomj.supabase.co";
-  const DEFAULT_SUPABASE_ANON = "sb_publishable_DqT558KsMzTUtVVUZAHpqg_hbMolEeU";
-  const TABLE_NAME = 'naza_planos';
+  const DEFAULT_SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1cHJ4dWhmbHRhY3ZmZ2Jqb21qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDQwMDAwMDAsImV4cCI6MjAxOTU3NjAwMH0.DqT558KsMzTUtVVUZAHpqg_hbMolEeU";
+  const TABLE_NAME = 'naza_activities';
+
+  // ===== VARIÁVEIS GLOBAIS =====
+  let db = null; // Dexie/IndexedDB
   let sbClient = null;
   let charts = {};
   let activities = [];
   let editingId = null;
   let currentPhotos = { before: [], after: [] };
+  let isOnline = navigator.onLine;
+  let showHidden = false;
+  let syncInProgress = false;
 
-  if (typeof Chart !== 'undefined') {
-    Chart.defaults.font.family = 'Inter, Segoe UI, Arial, sans-serif';
-    Chart.defaults.color = '#64748b';
-    Chart.defaults.borderColor = '#e2e8f0';
-  }
-
+  // ===== UTILITÁRIOS =====
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
   const uid = () => (globalThis.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2);
@@ -838,16 +481,271 @@
   const formatDate = (v) => { const d = parseDate(v); return d ? d.toLocaleDateString('pt-BR') : '—'; };
   const daysBetween = (a,b) => Math.round((b-a)/(24*3600*1000));
 
+  // ===== INICIALIZAÇÃO DO INDEXEDDB COM DEXIE =====
+  async function initIndexedDB() {
+    try {
+      db = new Dexie(DB_NAME);
+      db.version(DB_VERSION).stores({
+        activities: '++id, tipo, estrutura, responsavel, status, updatedAt',
+        syncQueue: '++id, action, data, timestamp'
+      });
+      await db.open();
+      console.log('IndexedDB aberto com sucesso');
+      updateSyncStatus('⚡ IndexedDB pronto', 'online');
+    } catch (err) {
+      console.error('Erro ao abrir IndexedDB:', err);
+      updateSyncStatus('❌ Erro IndexedDB', 'offline');
+      // Fallback para memória
+      db = null;
+    }
+  }
 
+  // ===== CARREGAR ATIVIDADES DO INDEXEDDB =====
+  async function loadActivitiesFromDB() {
+    try {
+      if (!db) {
+        // Fallback: tentar localStorage ou dados padrão
+        const raw = localStorage.getItem('naza_backup');
+        if (raw) {
+          activities = JSON.parse(raw).map(normalizeActivity);
+        } else {
+          activities = getDefaultData().map(normalizeActivity);
+        }
+        return;
+      }
+
+      const data = await db.activities.toArray();
+      if (data && data.length > 0) {
+        activities = data.map(normalizeActivity);
+        console.log(`Carregadas ${activities.length} atividades do IndexedDB`);
+      } else {
+        // Primeira vez: carregar dados padrão
+        activities = getDefaultData().map(normalizeActivity);
+        await saveActivitiesToDB();
+      }
+    } catch (err) {
+      console.error('Erro ao carregar do IndexedDB:', err);
+      activities = getDefaultData().map(normalizeActivity);
+    }
+  }
+
+  // ===== SALVAR ATIVIDADES NO INDEXEDDB =====
+  async function saveActivitiesToDB() {
+    try {
+      if (!db) {
+        // Fallback: salvar no localStorage como backup
+        localStorage.setItem('naza_backup', JSON.stringify(activities));
+        return;
+      }
+
+      await db.activities.clear();
+      const toSave = activities.map(a => ({...a, updatedAt: new Date().toISOString()}));
+      await db.activities.bulkAdd(toSave);
+
+      // Também salvar backup no localStorage para redundância
+      localStorage.setItem('naza_backup', JSON.stringify(activities));
+
+      console.log(`Salvas ${activities.length} atividades no IndexedDB`);
+    } catch (err) {
+      console.error('Erro ao salvar no IndexedDB:', err);
+      // Fallback
+      localStorage.setItem('naza_backup', JSON.stringify(activities));
+    }
+  }
+
+  // ===== DADOS PADRÃO (SEM RESTAURAÇÃO AUTOMÁTICA) =====
+  function getDefaultData() {
+    return [
+      {
+        "id": "seed-1",
+        "tipo": "INFRA",
+        "estrutura": "CAVA GERMANO",
+        "local": "Acesso da Serra das Araras",
+        "acao": "Correção de erosões no acesso Serra das Araras",
+        "responsavel": "Técnico de operação",
+        "status": "Concluída",
+        "iniPlan": "2026-03-05",
+        "fimPlan": "2026-03-08",
+        "iniReal": "2026-03-05",
+        "fimReprog": "2026-03-14",
+        "fimReal": "2026-03-15",
+        "qProg": 1,
+        "qReal": 1,
+        "pctConc": 100,
+        "pctPlan": 100,
+        "farol": "n",
+        "causaAtraso": "",
+        "obs": "",
+        "hidden": false
+      },
+      {
+        "id": "seed-2",
+        "tipo": "INFRA",
+        "estrutura": "CAVA GERMANO",
+        "local": "Direcionamento da drenagem",
+        "acao": "Direcionamento da drenagem e realizar revestimento com blocos",
+        "responsavel": "Técnico de operação",
+        "status": "Em andamento",
+        "iniPlan": "2026-03-05",
+        "fimPlan": "2026-03-08",
+        "iniReal": "2026-03-05",
+        "fimReprog": "",
+        "fimReal": "",
+        "qProg": 1,
+        "qReal": 0.5,
+        "pctConc": 50.0,
+        "pctPlan": 100,
+        "farol": "n",
+        "causaAtraso": "",
+        "obs": "",
+        "hidden": false
+      }
+    ];
+  }
+
+  // ===== NORMALIZAR ATIVIDADE =====
   function normalizeActivity(a = {}) {
     return {
-      ...a,
+      id: a.id || uid(),
+      tipo: a.tipo || '',
+      estrutura: a.estrutura || '',
+      local: a.local || '',
+      acao: a.acao || '',
+      responsavel: a.responsavel || '',
+      status: a.status || 'Não iniciada',
+      iniPlan: a.iniPlan || '',
+      fimPlan: a.fimPlan || '',
+      iniReal: a.iniReal || '',
+      fimReprog: a.fimReprog || '',
+      fimReal: a.fimReal || '',
+      qProg: a.qProg || null,
+      qReal: a.qReal || null,
+      pctConc: a.pctConc || null,
+      pctPlan: a.pctPlan || null,
+      farol: a.farol || '',
+      causaAtraso: a.causaAtraso || '',
+      obs: a.obs || '',
       selected: !!a.selected,
+      hidden: !!a.hidden,
       photosBefore: Array.isArray(a.photosBefore) ? a.photosBefore : [],
-      photosAfter: Array.isArray(a.photosAfter) ? a.photosAfter : []
+      photosAfter: Array.isArray(a.photosAfter) ? a.photosAfter : [],
+      updatedAt: a.updatedAt || new Date().toISOString()
     };
   }
 
+  // ===== COMPRESSÃO DE IMAGENS =====
+  async function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.7) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // Calcular novas dimensões mantendo aspect ratio
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          // Criar canvas e desenhar imagem redimensionada
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Converter para JPEG com qualidade reduzida
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const reader2 = new FileReader();
+                reader2.onload = () => resolve(reader2.result);
+                reader2.readAsDataURL(blob);
+              } else {
+                reject(new Error('Falha na compressão'));
+              }
+            },
+            'image/jpeg',
+            quality
+          );
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ===== ATUALIZAR STATUS DE SINCRONIZAÇÃO =====
+  function updateSyncStatus(text, status) {
+    const el = $('syncStatus');
+    if (el) {
+      el.textContent = text;
+      el.className = status === 'offline' ? 'sync-status offline' : 
+                     status === 'syncing' ? 'sync-status syncing' : 'sync-status';
+    }
+
+    const badge = $('sbStatus');
+    if (badge) {
+      badge.textContent = isOnline ? 'Online - Pronto para sincronizar' : 'Offline - Dados locais';
+      badge.className = isOnline ? 'cloud-badge' : 'cloud-badge offline';
+    }
+  }
+
+  // ===== DETECÇÃO ONLINE/OFFLINE =====
+  function setupNetworkListeners() {
+    window.addEventListener('online', () => {
+      isOnline = true;
+      updateSyncStatus('🌐 Online - Sincronizando...', 'syncing');
+      syncWithCloud();
+    });
+
+    window.addEventListener('offline', () => {
+      isOnline = false;
+      updateSyncStatus('📴 Offline - Modo local', 'offline');
+    });
+  }
+
+  // ===== SINCRONIZAR COM A NUVEM =====
+  async function syncWithCloud() {
+    if (!isOnline || !sbClient || syncInProgress) return;
+
+    const { data: { user } } = await sbClient.auth.getUser();
+    if (!user) return;
+
+    syncInProgress = true;
+    updateSyncStatus('☁️ Sincronizando...', 'syncing');
+
+    try {
+      // Enviar dados locais
+      const { error } = await sbClient.from(TABLE_NAME).upsert({
+        user_id: user.id,
+        activities: activities,
+        updated_at: new Date().toISOString()
+      });
+
+      if (error) throw error;
+
+      updateSyncStatus('✅ Sincronizado', 'online');
+    } catch (err) {
+      console.error('Erro na sincronização:', err);
+      updateSyncStatus('❌ Erro ao sincronizar', 'offline');
+    } finally {
+      syncInProgress = false;
+    }
+  }
+
+  // ===== RESTO DAS FUNÇÕES (cálculos, filtros, gráficos) =====
   function calcPercentByQty(qProg, qReal) {
     const prog = toNum(qProg);
     const real = toNum(qReal);
@@ -863,7 +761,11 @@
     const status = $('fStatus').value;
     const dataIni = parseDate($('fDataIni').value);
     const dataLimite = parseDate($('fDataLimite').value);
+
     return activities.filter(a => {
+      // Filtro de ocultas
+      if (!showHidden && a.hidden) return false;
+
       const okBusca = !busca || norm([a.tipo,a.estrutura,a.local,a.acao,a.responsavel,a.status,a.obs].join(' ')).includes(busca);
       const okEstr = !estrutura || a.estrutura === estrutura;
       const okTipo = !tipo || a.tipo === tipo;
@@ -893,6 +795,7 @@
     if (auto != null) f.pctConc.value = String(auto).replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
   }
 
+  // ===== RENDERIZAÇÃO DE FOTOS =====
   function renderPhotoList(kind) {
     const holder = $(kind === 'before' ? 'beforePhotoList' : 'afterPhotoList');
     const arr = currentPhotos[kind];
@@ -933,65 +836,31 @@
     </div>`;
   }
 
-  function fileToDataURL(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
+  // ===== ADICIONAR FOTOS COM COMPRESSÃO =====
   async function appendPhotoFiles(kind, fileList) {
     const files = [...(fileList || [])].filter(f => /^image\//.test(f.type || ''));
+    updateSyncStatus('🗜️ Comprimindo fotos...', 'syncing');
+
     for (const file of files) {
-      const dataUrl = await fileToDataURL(file);
-      currentPhotos[kind].push(dataUrl);
+      try {
+        const compressed = await compressImage(file, 1200, 1200, 0.7);
+        currentPhotos[kind].push(compressed);
+      } catch (err) {
+        console.error('Erro ao comprimir imagem:', err);
+        // Fallback: tentar sem compressão
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          currentPhotos[kind].push(e.target.result);
+          renderPhotoList(kind);
+        };
+        reader.readAsDataURL(file);
+      }
     }
     renderPhotoList(kind);
+    updateSyncStatus(isOnline ? '🌐 Online' : '📴 Offline', isOnline ? 'online' : 'offline');
   }
 
-  function buildShareText(data, metrics) {
-    const lines = [
-      '📌 RELATÓRIO OPERACIONAL DE ATIVIDADES',
-      '',
-      `✅ Atividades consideradas: ${metrics.total}`,
-      `📈 Aderência global: ${pctText(metrics.adherence)}`,
-      `⏱️ Pontualidade: ${pctText(metrics.onTime)}`,
-      `🚨 Atrasadas: ${metrics.delayed}`,
-      `🔁 Reprogramadas: ${metrics.reprogramadas}`,
-      '',
-      '🗂️ DETALHAMENTO'
-    ];
-    data.forEach((a, idx) => {
-      lines.push(
-        '',
-        `${idx+1}. ${a.acao || 'Atividade'}`,
-        `   ├ Tipo: ${a.tipo || '—'}`,
-        `   ├ Estrutura: ${a.estrutura || '—'}`,
-        `   ├ Responsável: ${a.responsavel || '—'}`,
-        `   ├ Status: ${a.status || '—'}`,
-        `   ├ % concluído: ${toNum(a.pctConc) == null ? '—' : String(a.pctConc) + '%'}`,
-        `   ├ Prazo: ${formatDate(a.fimReprog || a.fimPlan)}`,
-        `   └ Fotos: antes ${a.photosBefore?.length || 0} | depois ${a.photosAfter?.length || 0}`
-      );
-      if (a.obs) lines.push(`   📝 ${a.obs}`);
-    });
-    return lines.join('\n');
-  }
-
-  function loadActivities() {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      const arr = raw ? JSON.parse(raw) : null;
-      activities = (Array.isArray(arr) && arr.length ? arr : DEFAULT_DATA.slice()).map(normalizeActivity);
-    } catch {
-      activities = DEFAULT_DATA.slice().map(normalizeActivity);
-    }
-  }
-
-  function saveActivities() { localStorage.setItem(LS_KEY, JSON.stringify(activities)); }
-
+  // ===== CÁLCULOS E MÉTRICAS =====
   function calcPlannedProgress(a) {
     const explicit = toNum(a.pctPlan);
     if (explicit != null) return Math.max(0, Math.min(1, explicit / 100));
@@ -1015,23 +884,6 @@
     const today = new Date(); today.setHours(12,0,0,0);
     const conc = toNum(a.pctConc);
     return !!(lim && today > lim && (conc == null || conc < 100));
-  }
-
-  function getFilteredActivities() {
-    return getDashboardActivities();
-  }
-
-  function populateFilters() {
-    const setOpts = (id, vals, label) => {
-      const sel = $(id);
-      const current = sel.value;
-      sel.innerHTML = `<option value="">${label}</option>` + vals.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
-      if ([...sel.options].some(o => o.value === current)) sel.value = current;
-    };
-    setOpts('fEstrutura', uniq(activities.map(a => a.estrutura)), 'Todas');
-    setOpts('fTipo', uniq(activities.map(a => a.tipo)), 'Todos');
-    setOpts('fResponsavel', uniq(activities.map(a => a.responsavel)), 'Todos');
-    setOpts('fStatus', uniq(activities.map(a => a.status)), 'Todos');
   }
 
   function computeMetrics(data) {
@@ -1072,6 +924,221 @@
   }
 
   function topEntries(map, limit=10) { return [...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0, limit); }
+
+  // ===== RENDERIZAÇÃO =====
+  function populateFilters() {
+    const setOpts = (id, vals, label) => {
+      const sel = $(id);
+      const current = sel.value;
+      sel.innerHTML = `<option value="">${label}</option>` + vals.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+      if ([...sel.options].some(o => o.value === current)) sel.value = current;
+    };
+    setOpts('fEstrutura', uniq(activities.map(a => a.estrutura)), 'Todas');
+    setOpts('fTipo', uniq(activities.map(a => a.tipo)), 'Todos');
+    setOpts('fResponsavel', uniq(activities.map(a => a.responsavel)), 'Todos');
+    setOpts('fStatus', uniq(activities.map(a => a.status)), 'Todos');
+  }
+
+  function renderKpis(metrics) {
+    $('kpis').innerHTML = [
+      ['Aderência global', pctText(metrics.adherence)],
+      ['Planejado médio', pctText(metrics.avgPlan)],
+      ['Realizado médio', pctText(metrics.avgReal)],
+      ['Pontualidade', pctText(metrics.onTime)],
+      ['Atividades', metrics.total],
+      ['Atrasadas', metrics.delayed],
+      ['Reprogramadas', metrics.reprogramadas],
+      ['Concluídas', metrics.concluidas]
+    ].map(([k,v]) => `<div class="kpi"><span class="label">${k}</span><b class="value">${v}</b></div>`).join('');
+  }
+
+  function renderInsights(data, metrics) {
+    const insights = [];
+    if (!data.length) insights.push('Nenhuma atividade na carteira filtrada.');
+    else {
+      if (metrics.adherence < 0.8) insights.push(`A aderência está em ${pctText(metrics.adherence)}, abaixo do nível de conforto. Prioridade: atacar atrasos e reprogramações.`);
+      else if (metrics.adherence < 0.95) insights.push(`A aderência está em ${pctText(metrics.adherence)}. O plano está perto do controle, mas ainda cabe recuperação.`);
+      else insights.push(`A aderência está forte em ${pctText(metrics.adherence)}. O foco passa a ser sustentar a pontualidade.`);
+      if (metrics.delayed > 0) insights.push(`Existem ${metrics.delayed} atividades atrasadas ou vencidas pela regra de prazo.`);
+      if (metrics.reprogramadas > 0) insights.push(`${metrics.reprogramadas} atividades reprogramadas exigem causa-raiz e correção de carteira.`);
+      const critResp = topEntries(groupCount(data.filter(a => ['Atrasada','Reprogramada'].includes(a.status) || classifyLate(a)), a => a.responsavel), 1)[0];
+      if (critResp) insights.push(`Maior concentração de desvio: ${critResp[0]} com ${critResp[1]} ocorrências críticas.`);
+      const critEstr = topEntries(groupCount(data.filter(a => ['Atrasada','Reprogramada','Em andamento'].includes(a.status) || classifyLate(a)), a => a.estrutura), 1)[0];
+      if (critEstr) insights.push(`Estrutura mais pressionada: ${critEstr[0]}.`);
+      if (metrics.onTime < 0.75) insights.push(`A pontualidade está em ${pctText(metrics.onTime)}. Prazo acordado ainda não está sustentado.`);
+      else insights.push(`A pontualidade está em ${pctText(metrics.onTime)}.`);
+    }
+    $('insightsList').innerHTML = insights.slice(0,6).map(i => `<li>${esc(i)}</li>`).join('');
+
+    const visible = getVisibleFilteredActivities();
+    const selectedVisible = getSelectedVisibleActivities(visible).length;
+    $('selectionCount').textContent = String(activities.filter(a => a.selected).length);
+    $('dataMeta').textContent = `${visible.length} atividades filtradas · ${selectedVisible} selecionadas · ${activities.length} total · ${activities.filter(a => a.hidden).length} ocultas`;
+
+    // Atualizar info de ocultas
+    const hiddenCount = activities.filter(a => a.hidden).length;
+    $('hiddenCount').textContent = hiddenCount;
+    $('hiddenInfo').classList.toggle('visible', hiddenCount > 0 && !showHidden);
+  }
+
+  function renderTable(data) {
+    const order = {'Atrasada':1,'Reprogramada':2,'Em andamento':3,'Não iniciada':4,'Concluída':5};
+    $('tbody').innerHTML = data.slice().sort((a,b) => (order[a.status] || 99) - (order[b.status] || 99)).map(a => {
+      const cls = 's-' + (a.status || 'Não iniciada').replace(/\s+/g, '-');
+      const rowClass = a.hidden ? 'hidden-row' : '';
+      return `<tr class="${rowClass}">
+        <td><input type="checkbox" class="table-check" data-select="${a.id}" ${a.selected ? 'checked' : ''}></td>
+        <td>${esc(a.tipo)}</td>
+        <td>${esc(a.estrutura)}</td>
+        <td>${esc(a.acao)}</td>
+        <td>${esc(a.responsavel)}</td>
+        <td>${toNum(a.pctConc) == null ? '—' : esc(String(a.pctConc)) + '%'}</td>
+        <td>${toNum(a.pctPlan) == null ? 'auto' : esc(String(a.pctPlan)) + '%'}</td>
+        <td><span class="status-pill ${cls}">${esc(a.status || 'Não iniciada')}</span></td>
+        <td>${formatDate(a.fimReprog || a.fimPlan)}</td>
+        <td>${formatDate(a.fimReal)}</td>
+        <td>${photoPairHtml(a)}</td>
+        <td class="row-actions">
+          <button data-edit="${a.id}">Editar</button>
+          <button data-hide="${a.id}" class="secondary">${a.hidden ? 'Mostrar' : 'Ocultar'}</button>
+          <button data-del="${a.id}" class="danger">Excluir</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    $('tbody').querySelectorAll('[data-edit]').forEach(btn => btn.onclick = () => editActivity(btn.dataset.edit));
+    $('tbody').querySelectorAll('[data-del]').forEach(btn => btn.onclick = () => deleteActivity(btn.dataset.del));
+    $('tbody').querySelectorAll('[data-hide]').forEach(btn => btn.onclick = () => toggleHideActivity(btn.dataset.hide));
+    $('tbody').querySelectorAll('[data-select]').forEach(box => box.onchange = () => {
+      const item = activities.find(a => a.id === box.dataset.select);
+      if (!item) return;
+      item.selected = box.checked;
+      saveActivitiesToDB();
+      render();
+    });
+    const visibleIds = new Set(data.map(a => a.id));
+    const visibleSelected = data.length && data.every(a => a.selected);
+    $('selectAllVisible').checked = !!(data.length && visibleSelected);
+    $('selectAllVisible').indeterminate = !visibleSelected && data.some(a => a.selected);
+  }
+
+  // ===== AÇÕES DE ATIVIDADES =====
+  async function deleteActivity(id) {
+    if (!confirm('Excluir esta atividade permanentemente?')) return;
+    activities = activities.filter(a => a.id !== id);
+    await saveActivitiesToDB();
+    render();
+    // Tentar sincronizar se online
+    if (isOnline) syncWithCloud();
+  }
+
+  async function toggleHideActivity(id) {
+    const a = activities.find(x => x.id === id);
+    if (!a) return;
+    a.hidden = !a.hidden;
+    await saveActivitiesToDB();
+    render();
+  }
+
+  function editActivity(id) {
+    const a = activities.find(x => x.id === id);
+    if (!a) return;
+    editingId = id;
+    fillForm(a);
+    setActiveTab('dashboard');
+    window.scrollTo({ top: 0, behavior:'smooth' });
+  }
+
+  function fillForm(a) {
+    const f = $('f');
+    Object.entries(a).forEach(([k,v]) => { if (f.elements[k]) f.elements[k].value = v == null ? '' : v; });
+    currentPhotos = { before: [...(a.photosBefore || [])], after: [...(a.photosAfter || [])] };
+    renderAllPhotoLists();
+    $('photoPanel').classList.toggle('hidden', !(currentPhotos.before.length || currentPhotos.after.length));
+    $('formTitle').textContent = 'Editando atividade';
+  }
+
+  function clearForm() {
+    $('f').reset();
+    editingId = null;
+    currentPhotos = { before: [], after: [] };
+    renderAllPhotoLists();
+    $('photoPanel').classList.add('hidden');
+    $('formTitle').textContent = 'Cadastro de atividade';
+  }
+
+  function collectForm() {
+    const f = $('f');
+    return {
+      id: editingId || uid(),
+      tipo: f.tipo.value.trim(),
+      estrutura: f.estrutura.value.trim(),
+      local: f.local.value.trim(),
+      acao: f.acao.value.trim(),
+      responsavel: f.responsavel.value.trim(),
+      status: f.status.value,
+      iniPlan: f.iniPlan.value,
+      fimPlan: f.fimPlan.value,
+      iniReal: f.iniReal.value,
+      fimReprog: f.fimReprog.value,
+      fimReal: f.fimReal.value,
+      qProg: f.qProg.value,
+      qReal: f.qReal.value,
+      pctConc: f.pctConc.value,
+      pctPlan: f.pctPlan.value,
+      farol: f.farol.value.trim(),
+      causaAtraso: f.causaAtraso.value,
+      obs: f.obs.value.trim(),
+      selected: !!(editingId ? (activities.find(a => a.id === editingId)?.selected) : false),
+      hidden: !!(editingId ? (activities.find(a => a.id === editingId)?.hidden) : false),
+      photosBefore: [...currentPhotos.before],
+      photosAfter: [...currentPhotos.after]
+    };
+  }
+
+  // ===== GRÁFICOS =====
+  function destroyCharts() { Object.values(charts).forEach(c => c && c.destroy && c.destroy()); charts = {}; }
+
+  function basePlugins() {
+    return {
+      legend: { labels: { color:'#64748b', usePointStyle:true, boxWidth:10 } },
+      tooltip: { backgroundColor:'rgba(15,23,42,.96)', borderColor:'rgba(255,255,255,.1)', borderWidth:1, titleColor:'#fff', bodyColor:'#e2e8f0' }
+    };
+  }
+
+  function axisStyle() { return { ticks: { color:'#64748b' }, grid: { color:'#edf2f7' } }; }
+
+  function makeGauge(canvasId, value) {
+    const v = Math.max(0, Math.min(1, value));
+    return new Chart($(canvasId), {
+      type:'doughnut',
+      data: { datasets:[{ data:[v, 1-v], backgroundColor:['#1e4a6e', '#d8e1eb'], borderWidth:0, cutout:'74%' }] },
+      options: {
+        rotation:-90,
+        circumference:180,
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins: { legend: { display:false }, tooltip: { enabled:false } }
+      },
+      plugins: [{
+        id: 'gaugeCenterValue',
+        afterDraw(chart) {
+          const {ctx, chartArea} = chart;
+          if (!chartArea) return;
+          const pct = (v * 100).toFixed(1).replace('.', ',') + '%';
+          const cx = (chartArea.left + chartArea.right) / 2;
+          const cy = chartArea.top + (chartArea.bottom - chartArea.top) * 0.72;
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#214f39';
+          ctx.font = '600 18px Inter, Segoe UI, Arial, sans-serif';
+          ctx.fillText(pct, cx, cy);
+          ctx.restore();
+        }
+      }]
+    });
+  }
 
   function buildTimelineSeries(data) {
     const points = new Map();
@@ -1157,125 +1224,6 @@
         return [Math.max(0, daysBetween(base, ini)), Math.max(1, daysBetween(ini, fim) || 1)];
       })
     };
-  }
-
-  function destroyCharts() { Object.values(charts).forEach(c => c && c.destroy && c.destroy()); charts = {}; }
-
-  function basePlugins() {
-    return {
-      legend: { labels: { color:'#64748b', usePointStyle:true, boxWidth:10 } },
-      tooltip: { backgroundColor:'rgba(15,23,42,.96)', borderColor:'rgba(255,255,255,.1)', borderWidth:1, titleColor:'#fff', bodyColor:'#e2e8f0' }
-    };
-  }
-
-  function axisStyle() { return { ticks: { color:'#64748b' }, grid: { color:'#edf2f7' } }; }
-
-  function makeGauge(canvasId, value) {
-    const v = Math.max(0, Math.min(1, value));
-    return new Chart($(canvasId), {
-      type:'doughnut',
-      data: { datasets:[{ data:[v, 1-v], backgroundColor:['#1e4a6e', '#d8e1eb'], borderWidth:0, cutout:'74%' }] },
-      options: {
-        rotation:-90,
-        circumference:180,
-        responsive:true,
-        maintainAspectRatio:false,
-        plugins: {
-          legend: { display:false },
-          tooltip: { enabled:false }
-        }
-      },
-      plugins: [{
-        id: 'gaugeCenterValue',
-        afterDraw(chart) {
-          const {ctx, chartArea} = chart;
-          if (!chartArea) return;
-          const pct = (v * 100).toFixed(1).replace('.', ',') + '%';
-          const cx = (chartArea.left + chartArea.right) / 2;
-          const cy = chartArea.top + (chartArea.bottom - chartArea.top) * 0.72;
-          ctx.save();
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#214f39';
-          ctx.font = '600 18px Inter, Segoe UI, Arial, sans-serif';
-          ctx.fillText(pct, cx, cy);
-          ctx.restore();
-        }
-      }]
-    });
-  }
-
-  function renderKpis(metrics) {
-    $('kpis').innerHTML = [
-      ['Aderência global', pctText(metrics.adherence)],
-      ['Planejado médio', pctText(metrics.avgPlan)],
-      ['Realizado médio', pctText(metrics.avgReal)],
-      ['Pontualidade', pctText(metrics.onTime)],
-      ['Atividades', metrics.total],
-      ['Atrasadas', metrics.delayed],
-      ['Reprogramadas', metrics.reprogramadas],
-      ['Concluídas', metrics.concluidas]
-    ].map(([k,v]) => `<div class="kpi"><span>${k}</span><b>${v}</b></div>`).join('');
-  }
-
-  function renderInsights(data, metrics) {
-    const insights = [];
-    if (!data.length) insights.push('Nenhuma atividade na carteira filtrada.');
-    else {
-      if (metrics.adherence < 0.8) insights.push(`A aderência está em ${pctText(metrics.adherence)}, abaixo do nível de conforto. Prioridade: atacar atrasos e reprogramações.`);
-      else if (metrics.adherence < 0.95) insights.push(`A aderência está em ${pctText(metrics.adherence)}. O plano está perto do controle, mas ainda cabe recuperação.`);
-      else insights.push(`A aderência está forte em ${pctText(metrics.adherence)}. O foco passa a ser sustentar a pontualidade.`);
-      if (metrics.delayed > 0) insights.push(`Existem ${metrics.delayed} atividades atrasadas ou vencidas pela regra de prazo.`);
-      if (metrics.reprogramadas > 0) insights.push(`${metrics.reprogramadas} atividades reprogramadas exigem causa-raiz e correção de carteira.`);
-      const critResp = topEntries(groupCount(data.filter(a => ['Atrasada','Reprogramada'].includes(a.status) || classifyLate(a)), a => a.responsavel), 1)[0];
-      if (critResp) insights.push(`Maior concentração de desvio: ${critResp[0]} com ${critResp[1]} ocorrências críticas.`);
-      const critEstr = topEntries(groupCount(data.filter(a => ['Atrasada','Reprogramada','Em andamento'].includes(a.status) || classifyLate(a)), a => a.estrutura), 1)[0];
-      if (critEstr) insights.push(`Estrutura mais pressionada: ${critEstr[0]}.`);
-      if (metrics.onTime < 0.75) insights.push(`A pontualidade está em ${pctText(metrics.onTime)}. Prazo acordado ainda não está sustentado.`);
-      else insights.push(`A pontualidade está em ${pctText(metrics.onTime)}.`);
-    }
-    $('insightsList').innerHTML = insights.slice(0,6).map(i => `<li>${esc(i)}</li>`).join('');
-    const visible = getVisibleFilteredActivities();
-    const selectedVisible = getSelectedVisibleActivities(visible).length;
-    $('selectionCount').textContent = String(activities.filter(a => a.selected).length);
-    $('dataMeta').textContent = `${visible.length} atividades filtradas · ${selectedVisible ? selectedVisible + ' selecionadas em uso nos gráficos' : 'todas as filtradas em uso nos gráficos'} · ${activities.length} atividades salvas no navegador`;
-  }
-
-  function renderTable(data) {
-    const order = {'Atrasada':1,'Reprogramada':2,'Em andamento':3,'Não iniciada':4,'Concluída':5};
-    $('tbody').innerHTML = data.slice().sort((a,b) => (order[a.status] || 99) - (order[b.status] || 99)).map(a => {
-      const cls = 's-' + (a.status || 'Não iniciada').replace(/\s+/g, '-');
-      return `<tr>
-        <td><input type="checkbox" class="table-check" data-select="${a.id}" ${a.selected ? 'checked' : ''}></td>
-        <td>${esc(a.tipo)}</td>
-        <td>${esc(a.estrutura)}</td>
-        <td>${esc(a.acao)}</td>
-        <td>${esc(a.responsavel)}</td>
-        <td>${toNum(a.pctConc) == null ? '—' : esc(String(a.pctConc)) + '%'}</td>
-        <td>${toNum(a.pctPlan) == null ? 'auto' : esc(String(a.pctPlan)) + '%'}</td>
-        <td><span class="status-pill ${cls}">${esc(a.status || 'Não iniciada')}</span></td>
-        <td>${formatDate(a.fimReprog || a.fimPlan)}</td>
-        <td>${formatDate(a.fimReal)}</td>
-        <td>${photoPairHtml(a)}</td>
-        <td class="row-actions">
-          <button data-edit="${a.id}">Editar</button>
-          <button data-del="${a.id}" class="danger">Excluir</button>
-        </td>
-      </tr>`;
-    }).join('');
-    $('tbody').querySelectorAll('[data-edit]').forEach(btn => btn.onclick = () => editActivity(btn.dataset.edit));
-    $('tbody').querySelectorAll('[data-del]').forEach(btn => btn.onclick = () => deleteActivity(btn.dataset.del));
-    $('tbody').querySelectorAll('[data-select]').forEach(box => box.onchange = () => {
-      const item = activities.find(a => a.id === box.dataset.select);
-      if (!item) return;
-      item.selected = box.checked;
-      saveActivities();
-      render();
-    });
-    const visibleIds = new Set(data.map(a => a.id));
-    const visibleSelected = data.length && data.every(a => a.selected);
-    $('selectAllVisible').checked = !!(data.length && visibleSelected);
-    $('selectAllVisible').indeterminate = !visibleSelected && data.some(a => a.selected);
   }
 
   function renderCharts(data, metrics) {
@@ -1437,7 +1385,7 @@
 
   function render() {
     populateFilters();
-    const dashboardData = getFilteredActivities();
+    const dashboardData = getDashboardActivities();
     const visibleData = getVisibleFilteredActivities();
     const metrics = computeMetrics(dashboardData);
     renderKpis(metrics);
@@ -1446,74 +1394,123 @@
     renderCharts(dashboardData, metrics);
   }
 
-  function fillForm(a) {
-    const f = $('f');
-    Object.entries(a).forEach(([k,v]) => { if (f.elements[k]) f.elements[k].value = v == null ? '' : v; });
-    currentPhotos = { before: [...(a.photosBefore || [])], after: [...(a.photosAfter || [])] };
-    renderAllPhotoLists();
-    $('photoPanel').classList.toggle('hidden', !(currentPhotos.before.length || currentPhotos.after.length));
-    $('formTitle').textContent = 'Editando atividade';
-  }
+  // ===== EVENT LISTENERS =====
+  function setupEventListeners() {
+    // Formulário
+    $('f').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const obj = collectForm();
+      if (editingId) {
+        activities = activities.map(a => a.id === editingId ? normalizeActivity(obj) : a);
+      } else {
+        activities.unshift(normalizeActivity(obj));
+      }
+      await saveActivitiesToDB();
+      clearForm();
+      render();
+      // Tentar sincronizar se online
+      if (isOnline) syncWithCloud();
+    });
 
-  function clearForm() {
-    $('f').reset();
-    editingId = null;
-    currentPhotos = { before: [], after: [] };
-    renderAllPhotoLists();
-    $('photoPanel').classList.add('hidden');
-    $('formTitle').textContent = 'Cadastro de atividade';
-  }
-
-  function editActivity(id) {
-    const a = activities.find(x => x.id === id);
-    if (!a) return;
-    editingId = id;
-    fillForm(a);
-    setActiveTab('dashboard');
-    window.scrollTo({ top: 0, behavior:'smooth' });
-  }
-
-  function deleteActivity(id) {
-    if (!confirm('Excluir esta atividade?')) return;
-    activities = activities.filter(a => a.id !== id);
-    saveActivities();
-    render();
-  }
-
-  function collectForm() {
-    const f = $('f');
-    return {
-      id: editingId || uid(),
-      tipo: f.tipo.value.trim(),
-      estrutura: f.estrutura.value.trim(),
-      local: f.local.value.trim(),
-      acao: f.acao.value.trim(),
-      responsavel: f.responsavel.value.trim(),
-      status: f.status.value,
-      iniPlan: f.iniPlan.value,
-      fimPlan: f.fimPlan.value,
-      iniReal: f.iniReal.value,
-      fimReprog: f.fimReprog.value,
-      fimReal: f.fimReal.value,
-      qProg: f.qProg.value,
-      qReal: f.qReal.value,
-      pctConc: f.pctConc.value,
-      pctPlan: f.pctPlan.value,
-      farol: f.farol.value.trim(),
-      causaAtraso: f.causaAtraso.value,
-      obs: f.obs.value.trim(),
-      selected: !!(editingId ? (activities.find(a => a.id === editingId)?.selected) : false),
-      photosBefore: [...currentPhotos.before],
-      photosAfter: [...currentPhotos.after]
+    $('btnCancel').onclick = clearForm;
+    $('btnNew').onclick = () => { 
+      clearForm(); 
+      setActiveTab('dashboard'); 
+      window.scrollTo({ top:0, behavior:'smooth' }); 
+      setTimeout(() => $('f').elements.tipo?.focus(), 120); 
     };
+
+    // Exportar/Importar
+    $('btnExport').onclick = () => exportJson(activities, 'naza_plano_aderencia_integrada_completo.json');
+    $('importFile').addEventListener('change', (e) => e.target.files[0] && importJson(e.target.files[0]));
+    $('btnPdf').onclick = () => exportPdf(getReportActivities(), 'naza_audit_plano_aderencia_filtrado.pdf');
+
+    // Reset
+    $('btnReset').onclick = async () => {
+      if (!confirm('Apagar toda a base local e voltar para a base de teste?')) return;
+      activities = getDefaultData().map(normalizeActivity);
+      await saveActivitiesToDB();
+      clearForm();
+      render();
+    };
+
+    // Toggle ocultas
+    $('btnToggleHidden').onclick = () => {
+      showHidden = !showHidden;
+      $('btnToggleHidden').textContent = showHidden ? '🙈 Ocultar ocultas' : '🙈 Mostrar ocultas';
+      render();
+    };
+
+    // Filtros
+    ['q','fDataIni','fDataLimite'].forEach(id => $(id).addEventListener('input', render));
+    ['fEstrutura','fTipo','fResponsavel','fStatus'].forEach(id => $(id).addEventListener('change', render));
+
+    // Fotos
+    $('btnTogglePhotos').onclick = () => $('photoPanel').classList.toggle('hidden');
+    $('beforePhotosInput').addEventListener('change', async (e) => { 
+      await appendPhotoFiles('before', e.target.files); 
+      e.target.value = ''; 
+      $('photoPanel').classList.remove('hidden'); 
+    });
+    $('afterPhotosInput').addEventListener('change', async (e) => { 
+      await appendPhotoFiles('after', e.target.files); 
+      e.target.value = ''; 
+      $('photoPanel').classList.remove('hidden'); 
+    });
+
+    // Cálculo automático
+    ['qProg','qReal'].forEach(name => $('f').elements[name].addEventListener('input', syncAutoPercent));
+
+    // Seleção
+    $('btnJsonSelection').onclick = () => exportJson(getReportActivities(), 'naza_plano_aderencia_selecao.json');
+    $('btnPdfSelection').onclick = () => exportPdf(getReportActivities(), 'naza_audit_plano_aderencia_selecao.pdf');
+    $('btnWhatsapp').onclick = shareWhatsappReport;
+    $('btnSelectVisible').onclick = () => {
+      const visibleIds = new Set(getVisibleFilteredActivities().map(a => a.id));
+      activities = activities.map(a => visibleIds.has(a.id) ? { ...a, selected:true } : a);
+      saveActivitiesToDB();
+      render();
+    };
+    $('btnClearSelection').onclick = () => {
+      activities = activities.map(a => ({ ...a, selected:false }));
+      saveActivitiesToDB();
+      render();
+    };
+    $('selectAllVisible').onchange = () => {
+      const checked = $('selectAllVisible').checked;
+      const visibleIds = new Set(getVisibleFilteredActivities().map(a => a.id));
+      activities = activities.map(a => visibleIds.has(a.id) ? { ...a, selected:checked } : a);
+      saveActivitiesToDB();
+      render();
+    };
+
+    // Supabase
+    $('btnSbSignup').onclick = sbSignup;
+    $('btnSbLogin').onclick = sbLogin;
+    $('btnSbLogout').onclick = sbLogout;
+    $('btnSbPush').onclick = sbPush;
+    $('btnSbPull').onclick = sbPull;
+
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+    });
   }
 
+  function setActiveTab(tab) {
+    const isActivities = tab === 'activities';
+    $('tab-dashboard').classList.toggle('hidden-tab', isActivities);
+    $('tab-activities').classList.toggle('hidden-tab', !isActivities);
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+  }
+
+  // ===== EXPORT/IMPORT =====
   function getReportActivities() {
     const selectedVisible = getSelectedVisibleActivities(getVisibleFilteredActivities());
     return selectedVisible.length ? selectedVisible : getFilteredActivities();
   }
 
-  function exportJson(data = getReportActivities(), fileName = 'naza_plano_aderencia_integrada.json') {
+  function exportJson(data, fileName) {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -1524,12 +1521,12 @@
 
   function importJson(file) {
     const r = new FileReader();
-    r.onload = () => {
+    r.onload = async () => {
       try {
         const arr = JSON.parse(r.result);
         if (!Array.isArray(arr)) throw new Error('Arquivo inválido');
         activities = arr.map(normalizeActivity);
-        saveActivities();
+        await saveActivitiesToDB();
         clearForm();
         render();
       } catch (e) {
@@ -1539,7 +1536,7 @@
     r.readAsText(file, 'utf-8');
   }
 
-  async function exportPdf(data = getReportActivities(), fileName = 'naza_audit_plano_aderencia.pdf') {
+  async function exportPdf(data, fileName) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
     const metrics = computeMetrics(data);
@@ -1580,34 +1577,45 @@
     doc.save(fileName);
   }
 
+  function buildShareText(data, metrics) {
+    const lines = [
+      '📌 RELATÓRIO OPERACIONAL DE ATIVIDADES',
+      '',
+      `✅ Atividades consideradas: ${metrics.total}`,
+      `📈 Aderência global: ${pctText(metrics.adherence)}`,
+      `⏱️ Pontualidade: ${pctText(metrics.onTime)}`,
+      `🚨 Atrasadas: ${metrics.delayed}`,
+      `🔁 Reprogramadas: ${metrics.reprogramadas}`,
+      '',
+      '🗂️ DETALHAMENTO'
+    ];
+    data.forEach((a, idx) => {
+      lines.push(
+        '',
+        `${idx+1}. ${a.acao || 'Atividade'}`,
+        `   ├ Tipo: ${a.tipo || '—'}`,
+        `   ├ Estrutura: ${a.estrutura || '—'}`,
+        `   ├ Responsável: ${a.responsavel || '—'}`,
+        `   ├ Status: ${a.status || '—'}`,
+        `   ├ % concluído: ${toNum(a.pctConc) == null ? '—' : String(a.pctConc) + '%'}`,
+        `   ├ Prazo: ${formatDate(a.fimReprog || a.fimPlan)}`,
+        `   └ Fotos: antes ${a.photosBefore?.length || 0} | depois ${a.photosAfter?.length || 0}`
+      );
+      if (a.obs) lines.push(`   📝 ${a.obs}`);
+    });
+    return lines.join('\n');
+  }
+
   async function shareWhatsappReport() {
     const data = getReportActivities();
     if (!data.length) return alert('Nenhuma atividade filtrada ou selecionada para enviar.');
     const metrics = computeMetrics(data);
     const text = buildShareText(data, metrics);
-    const files = [];
-    data.slice(0, 8).forEach((a, idx) => {
-      [['antes', a.photosBefore?.[0]], ['depois', a.photosAfter?.[0]]].forEach(([label, src], fileIdx) => {
-        if (!src || !src.startsWith('data:image/')) return;
-        const parts = src.split(',');
-        const mime = parts[0].match(/data:(.*?);base64/);
-        if (!mime) return;
-        const bin = atob(parts[1]);
-        const arr = new Uint8Array(bin.length);
-        for (let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
-        files.push(new File([arr], `atividade_${idx+1}_${label}_${fileIdx+1}.jpg`, { type: mime[1] }));
-      });
-    });
-    if (navigator.share && files.length && navigator.canShare && navigator.canShare({ files })) {
-      try {
-        await navigator.share({ title:'Relatório operacional de atividades', text, files });
-        return;
-      } catch (e) {}
-    }
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   }
 
+  // ===== SUPABASE =====
   function initSupabase() {
     const lib = window.supabase;
     if (!lib || typeof lib.createClient !== 'function') {
@@ -1624,7 +1632,7 @@
     const password = $('sbPass').value;
     if (!email || !password) return alert('Informe e-mail e senha.');
     const { error } = await sbClient.auth.signUp({ email, password });
-    $('sbStatus').textContent = error ? ('Erro no cadastro: ' + error.message) : 'Cadastro enviado. Verifique seu e-mail se a confirmação estiver ativa.';
+    $('sbStatus').textContent = error ? ('Erro no cadastro: ' + error.message) : 'Cadastro enviado. Verifique seu e-mail.';
   }
 
   async function sbLogin() {
@@ -1646,106 +1654,95 @@
     if (!sbClient) return alert('Supabase não inicializado.');
     const { data:{ user } } = await sbClient.auth.getUser();
     if (!user) return alert('Faça login primeiro.');
+    updateSyncStatus('☁️ Enviando...', 'syncing');
     const payload = { user_id:user.id, activities, updated_at:new Date().toISOString() };
     const { error } = await sbClient.from(TABLE_NAME).upsert(payload);
     $('sbStatus').textContent = error ? ('Erro ao enviar: ' + error.message) : 'Dados enviados para a nuvem.';
+    updateSyncStatus(error ? '❌ Erro ao enviar' : '✅ Enviado', error ? 'offline' : 'online');
   }
 
   async function sbPull() {
     if (!sbClient) return alert('Supabase não inicializado.');
     const { data:{ user } } = await sbClient.auth.getUser();
     if (!user) return alert('Faça login primeiro.');
+    updateSyncStatus('☁️ Baixando...', 'syncing');
     const { data, error } = await sbClient.from(TABLE_NAME).select('activities').eq('user_id', user.id).maybeSingle();
     if (error) {
       $('sbStatus').textContent = 'Erro ao baixar: ' + error.message;
+      updateSyncStatus('❌ Erro ao baixar', 'offline');
       return;
     }
     if (data && Array.isArray(data.activities)) {
       activities = data.activities.map(normalizeActivity);
-      saveActivities();
+      await saveActivitiesToDB();
       clearForm();
       render();
       $('sbStatus').textContent = 'Dados baixados da nuvem.';
+      updateSyncStatus('✅ Sincronizado', 'online');
     } else {
-      $('sbStatus').textContent = 'Sem base salva na nuvem para este usuário.';
+      $('sbStatus').textContent = 'Sem base salva na nuvem.';
+      updateSyncStatus('⚡ IndexedDB pronto', 'online');
     }
   }
 
-  $('f').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const obj = collectForm();
-    if (editingId) activities = activities.map(a => a.id === editingId ? normalizeActivity(obj) : a);
-    else activities.unshift(normalizeActivity(obj));
-    saveActivities();
-    clearForm();
-    render();
-  });
+  // ===== SERVICE WORKER =====
+  function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('data:text/javascript;base64,' + btoa(`
+        const CACHE_NAME = 'naza-audit-v1';
+        const urlsToCache = ['/', '/naza.html'];
 
-  $('btnCancel').onclick = clearForm;
-  $('btnNew').onclick = () => { clearForm(); setActiveTab('dashboard'); window.scrollTo({ top:0, behavior:'smooth' }); setTimeout(() => $('f').elements.tipo?.focus(), 120); };
-  $('btnExport').onclick = () => exportJson(activities, 'naza_plano_aderencia_integrada_completo.json');
-  $('importFile').addEventListener('change', (e) => e.target.files[0] && importJson(e.target.files[0]));
-  $('btnPdf').onclick = () => exportPdf(getReportActivities(), 'naza_audit_plano_aderencia_filtrado.pdf');
-  $('btnReset').onclick = () => {
-    if (!confirm('Apagar toda a base local e voltar para a base de teste?')) return;
-    localStorage.removeItem(LS_KEY);
-    loadActivities();
-    clearForm();
-    render();
-  };
+        self.addEventListener('install', event => {
+          event.waitUntil(
+            caches.open(CACHE_NAME)
+              .then(cache => cache.addAll(urlsToCache))
+          );
+        });
 
-  ['q','fDataIni','fDataLimite'].forEach(id => $(id).addEventListener('input', render));
-  ['fEstrutura','fTipo','fResponsavel','fStatus'].forEach(id => $(id).addEventListener('change', render));
-
-  $('btnTogglePhotos').onclick = () => $('photoPanel').classList.toggle('hidden');
-  $('beforePhotosInput').addEventListener('change', async (e) => { await appendPhotoFiles('before', e.target.files); e.target.value = ''; $('photoPanel').classList.remove('hidden'); });
-  $('afterPhotosInput').addEventListener('change', async (e) => { await appendPhotoFiles('after', e.target.files); e.target.value = ''; $('photoPanel').classList.remove('hidden'); });
-  ['qProg','qReal'].forEach(name => $('f').elements[name].addEventListener('input', syncAutoPercent));
-  $('btnJsonSelection').onclick = () => exportJson(getReportActivities(), 'naza_plano_aderencia_selecao.json');
-  $('btnPdfSelection').onclick = () => exportPdf(getReportActivities(), 'naza_audit_plano_aderencia_selecao.pdf');
-  $('btnWhatsapp').onclick = shareWhatsappReport;
-  $('btnSelectVisible').onclick = () => {
-    const visibleIds = new Set(getVisibleFilteredActivities().map(a => a.id));
-    activities = activities.map(a => visibleIds.has(a.id) ? { ...a, selected:true } : a);
-    saveActivities();
-    render();
-  };
-  $('btnClearSelection').onclick = () => {
-    activities = activities.map(a => ({ ...a, selected:false }));
-    saveActivities();
-    render();
-  };
-  $('selectAllVisible').onchange = () => {
-    const checked = $('selectAllVisible').checked;
-    const visibleIds = new Set(getVisibleFilteredActivities().map(a => a.id));
-    activities = activities.map(a => visibleIds.has(a.id) ? { ...a, selected:checked } : a);
-    saveActivities();
-    render();
-  };
-
-  $('btnSbSignup').onclick = sbSignup;
-  $('btnSbLogin').onclick = sbLogin;
-  $('btnSbLogout').onclick = sbLogout;
-  $('btnSbPush').onclick = sbPush;
-  $('btnSbPull').onclick = sbPull;
-
-  function setActiveTab(tab) {
-    const isActivities = tab === 'activities';
-    $('tab-dashboard').classList.toggle('hidden-tab', isActivities);
-    $('tab-activities').classList.toggle('hidden-tab', !isActivities);
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+        self.addEventListener('fetch', event => {
+          event.respondWith(
+            caches.match(event.request)
+              .then(response => {
+                if (response) return response;
+                return fetch(event.request);
+              })
+          );
+        });
+      `)).then(reg => {
+        console.log('Service Worker registrado:', reg.scope);
+      }).catch(err => {
+        console.log('Erro no Service Worker:', err);
+      });
+    }
   }
 
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
-  });
+  // ===== INICIALIZAÇÃO =====
+  async function init() {
+    if (typeof Chart !== 'undefined') {
+      Chart.defaults.font.family = 'Inter, Segoe UI, Arial, sans-serif';
+      Chart.defaults.color = '#64748b';
+      Chart.defaults.borderColor = '#e2e8f0';
+    }
 
-  loadActivities();
-  initSupabase();
-  renderAllPhotoLists();
-  setActiveTab('dashboard');
-  render();
+    await initIndexedDB();
+    await loadActivitiesFromDB();
+    initSupabase();
+    setupNetworkListeners();
+    setupEventListeners();
+    renderAllPhotoLists();
+    setActiveTab('dashboard');
+    render();
+    registerServiceWorker();
+  }
+
+  // Iniciar quando DOM estiver pronto
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 })();
+
 </script>
 </body>
 </html>
